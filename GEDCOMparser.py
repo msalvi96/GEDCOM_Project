@@ -1,7 +1,7 @@
 """
 Author: Mrunal Salvi
-SSW 555 Project 02
-Practice Working with GEDCOM Data
+SSW 555 Project 03
+Analysing GEDCOM Data
 """
 import os
 from datetime import datetime
@@ -188,7 +188,7 @@ class Family:
         return divorced
     
     def pt_row(self):
-        return [self.fam_id, self.marriage_date, self.divorced, self.husband.indi_id, self.husband.name, self.wife.indi_id, self.wife.name, [child.indi_id for child in self.children]]
+        return [self.fam_id, self.marriage_date.strftime("%Y-%m-%d") if self.marriage_date else 'NA', self.divorced, self.husband.indi_id, self.husband.name, self.wife.indi_id, self.wife.name, [child.indi_id for child in self.children]]
 
 class Individual:
     """ Individual class to initialize individual information """
