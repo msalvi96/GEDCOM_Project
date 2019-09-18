@@ -34,7 +34,7 @@ class GedcomTree:
         'CHIL': 'children',
     }
 
-    def __init__(self, path, pt=True):
+    def __init__(self, path, pt=False):
         self.path = path
         self.individuals = dict()
         self.families = dict()
@@ -62,7 +62,6 @@ class GedcomTree:
                     split_line = self.checkExceptionTag(split_line)
                     valid_line = self.checkValidTag(split_line)
                 
-        
         self.data_processing()
 
         if pt:
@@ -227,4 +226,4 @@ class Individual:
 if __name__ == "__main__":
     """ Workflow """
 
-    x = GedcomTree(r'./Mrunal_Salvi_GEDCOM.ged')
+    x = GedcomTree(r'./Mrunal_Salvi_GEDCOM.ged', pt=True)
