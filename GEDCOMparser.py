@@ -65,12 +65,6 @@ class GedcomTree:
                 
         self.data_processing()
 
-        for i in self.individuals.values():
-            print(i.line_number)
-
-        for j in self.families.values():
-            print(j.line_number)
-
         if pt:
             
             indi_table = self.pretty_print(Individual.table_header, self.individuals.values())
