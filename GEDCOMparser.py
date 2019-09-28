@@ -174,6 +174,31 @@ class GedcomTree:
 
         return table
 
+    def us14_multiple_births_fewer_than_6(self, pt=False):
+        """ User Story 14 - No more than 5 siblings should be born at a time """
+
+        birthday_list = []
+        checked_birthdays = []
+        for family in self.families.values():
+            for child in family.children:
+                for individual in self.individuals.values():
+                    if individual.indi_id == child.indi_id:
+                        birthday_list.append(individual.birth_date)
+            for bday in birthday_list:
+                if birthday_list.count(bday) > 5 and checked_birthdays.count(bday) == 0 and pt:
+                    print(f'ERROR: FAMILY: US014: '+family.fam_id+': '+str(birthday_list.count(bday))+' children born on same day.')
+                    checked_birthdays.append(bday)
+            birthday_list.clear()
+            checked_birthdays.clear()
+
+    def us15_fewer_than_15_siblings(self, pt=False):
+        """ User Story 15 - There should be fewer than 15 children in a family """
+
+        for family in self.families.values():
+            if len(family.children) >= 15:
+                if pt:
+                    print(f'ERROR: FAMILY: US015: '+family.fam_id+': Family has '+str(len(family.children))+' children.')
+
     def us33_list_orphans(self, pt=False):
         """ User Story 33 - List all orphaned children (both parents dead and child < 18 years old) """
         
@@ -326,8 +351,10 @@ class Individual:
 if __name__ == "__main__":
     """ Workflow """
 
-    sprint1 = GedcomTree(r'./Mrunal_Salvi_GEDCOM.ged', pt=True)
+    sprint1 = GedcomTree(r'./Mrunal_Salvi_GEDCOM_us14us15.ged', pt=True)
 
     ms_us33 = sprint1.us33_list_orphans(pt=True)
     ms_us38 = sprint1.us38_upcoming_birthdays(pt=True)
+    sprint1.us14_multiple_births_fewer_than_6(pt=True)
+    sprint1.us15_fewer_than_15_siblings(pt=True)
     
