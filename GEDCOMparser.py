@@ -43,6 +43,7 @@ class GedcomTree:
         self.raw_data = []
         self.comment_log = []
         self.error_log = []
+        self.invalid_tags = []
 
         if not os.path.exists(self.path):
             raise FileNotFoundError
@@ -55,14 +56,20 @@ class GedcomTree:
 
         else:
             with fp:
-                for line in fp:
+                for index, line in enumerate(fp):
                     line = line.strip('\n')
                     split_line = line.split(' ', 2)
 
                     split_line = self.checkExceptionTag(split_line)
-                    valid_line = self.checkValidTag(split_line)
+                    valid_line = self.checkValidTag(index, split_line)
                 
         self.data_processing()
+
+        for i in self.individuals.values():
+            print(i.line_number)
+
+        for j in self.families.values():
+            print(j.line_number)
 
         if pt:
             
@@ -85,19 +92,19 @@ class GedcomTree:
         return split_line
 
 
-    def checkValidTag(self, split_line):
+    def checkValidTag(self, index, split_line):
         """ Function to check valid tags """
 
         level = split_line[0]
         if level in GedcomTree.valid_dict.keys():
             if split_line[1] in GedcomTree.valid_dict[level]:
-                self.raw_data.append(split_line)
+                self.raw_data.append((*split_line, index))
 
             else:
-                self.error_log.append(split_line)
+                self.invalid_tags.append((*split_line, index))
 
         else:
-            self.error_log.append(split_line)
+            self.invalid_tags.append((*split_line, index))
 
         return split_line
 
@@ -120,15 +127,18 @@ class GedcomTree:
                     self.comment_log.append(line)
 
                 #While loop to iterate over INDI tags
-                while len(line) == 3 and line[0] == '0' and line[1] == "INDI":
+                while len(line) == 4 and line[0] == '0' and line[1] == "INDI":
                     indi = Individual(line[2])  #creating new individual with id in line
+                    indi.data_lines.append(line) #for storing corresponding line numbers
                     self.individuals[line[2]] = indi    #store object in 'individuals' dictionary with key as id and value as object
                     line = next(data_iter)
 
                     while line[0] != '0':   #loop until next line level becomes 0
+                        indi.data_lines.append(line) #for storing corresponding line numbers
                         if line[0] == '1' and line[1] in GedcomTree.indi_dict.keys():
                             if line[1] in ('DEAT', 'BIRT'):
-                                second_line = next(data_iter)  
+                                second_line = next(data_iter)
+                                indi.data_lines.append(second_line) #for storing corresponding line numbers
                                 setattr(indi, GedcomTree.indi_dict[line[1]], datetime.datetime.strptime(second_line[2], '%d %b %Y')) #set individual attribute
 
                             else:
@@ -137,15 +147,18 @@ class GedcomTree:
                         line = next(data_iter)
 
                 #while loop to iterate over FAM tags
-                while len(line) == 3 and line[0] == '0' and line[1] == "FAM":
+                while len(line) == 4 and line[0] == '0' and line[1] == "FAM":
                     family = Family(line[2]) #creating new family with id in line
+                    family.data_lines.append(line) #for storing corresponding line number
                     self.families[line[2]] = family #store object in 'families' dictionary with key as id and value as object
                     line = next(data_iter)
 
                     while line[0] != '0':   #loop until next line level becomes 0
+                        family.data_lines.append(line) #for storing corresponding line numbers
                         if line[0] == '1' and line[1] in GedcomTree.fam_dict.keys():
                             if line[1] in ('MARR', 'DIV'):
                                 second_line = next(data_iter)
+                                family.data_lines.append(second_line) #for storing corresponding line numbers
                                 setattr(family, GedcomTree.fam_dict[line[1]], datetime.datetime.strptime(second_line[2], '%d %b %Y')) #set familiy attributes
 
                             elif line[1] in ('HUSB', 'WIFE'):
@@ -167,8 +180,6 @@ class GedcomTree:
 
         return table
 
-
-
     def us33_list_orphans(self, pt=False):
         """ User Story 33 - List all orphaned children (both parents dead and child < 18 years old) """
         
@@ -178,8 +189,7 @@ class GedcomTree:
                 for child in family.children:
                     if child.age < 18:
                         orphan_list.append(child)
-        
-        
+                
         if pt:
             orphan_table = self.pretty_print(Individual.table_header, orphan_list)
             print(f'Summary of Orphans: \n{orphan_table}')
@@ -215,6 +225,26 @@ class Family:
         self.husband = None
         self.wife = None
         self.children = []
+        self.data_lines = []
+
+    @property
+    def line_number(self):
+        data_iter = iter(self.data_lines)
+        line_dict = {}
+        child_array = []
+        for line in data_iter:
+            if line[1] in ('FAM', 'HUSB', 'WIFE'):
+                line_dict[line[1]] = line[3]
+
+            elif line[1] in ('MARR', 'DIV'):
+                second_line = next(data_iter)
+                line_dict[line[1]] = second_line[3]
+
+            elif line[1] in ('CHIL'):
+                child_array.append((line[2], line[3]))
+
+        line_dict['CHIL'] = child_array
+        return line_dict
 
     @property
     def divorced(self):
@@ -240,6 +270,23 @@ class Individual:
         self.death_date = None
         self.fam_c = 'NA'
         self.fam_s = 'NA'
+        self.data_lines = []
+
+
+    @property
+    def line_number(self):
+        data_iter = iter(self.data_lines)
+        line_dict = {}
+
+        for line in data_iter:
+            if line[1] in ('INDI', 'NAME', 'SEX', 'FAMC', 'FAMS'):
+                line_dict[line[1]] = line[3]
+
+            elif line[1] in ('BIRT', 'DEAT'):
+                second_line = next(data_iter)
+                line_dict[line[1]] = second_line[3]
+
+        return line_dict  
 
     @property
     def age(self):
@@ -258,9 +305,25 @@ class Individual:
         return alive
 
     @property
-    def birthday(self):        
-        birthday = datetime.datetime(GedcomTree.current_date.year, self.birth_date.month, self.birth_date.day)
-        return birthday
+    def birthday(self):
+        if self.birth_date:        
+            birthday = datetime.datetime(GedcomTree.current_date.year, self.birth_date.month, self.birth_date.day)
+            return birthday
+
+    @property
+    def first_name(self):
+        if self.name and len(self.name.split('/')) >= 2:
+            name = self.name.split('/')
+            first_name = name[0]
+            return first_name
+    
+    @property
+    def last_name(self):
+        if self.name and len(self.name.split('/')) >= 2:
+            name = self.name.split('/')
+            last_name = name[1]
+            return last_name
+            
 
     def pt_row(self):
         return [self.indi_id, self.name, self.sex, self.birth_date.strftime("%Y-%m-%d"), self.age, self.alive, self.death_date.strftime("%Y-%m-%d") if self.death_date else 'NA', self.fam_c, self.fam_s]
