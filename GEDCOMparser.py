@@ -243,20 +243,25 @@ class GedcomTree:
         if pt:
             living_married_table = self.pretty_print(Individual.table_header, living_married_list)
             print(f'Living Married: \n{living_married_table}')
+            print(f'There are {len(living_married_list)} living married')
+        
+        return living_married_list
 
     def us31_list_living_single(self, pt=False):
-            """ User story 31 list living single Author: Weihan Xu"""
+        """ User story 31 list living single Author: Weihan Xu"""
 
-            living_single_list = []
-            for individual in self.individuals.values():
-                if not individual.death_date:
-                    if individual.fam_s == 'NA':
-                        living_single_list.append(individual)
+        living_single_list = []
+        for individual in self.individuals.values():
+            if not individual.death_date:
+                if individual.fam_s == 'NA':
+                    living_single_list.append(individual)
 
-            if pt:
-                living_single_table = self.pretty_print(Individual.table_header, living_single_list)
-                print(f'Living Single: \n{living_single_table}')
+        if pt:
+            living_single_table = self.pretty_print(Individual.table_header, living_single_list)
+            print(f'Living Single: \n{living_single_table}')
+            print(f'There are {len(living_single_list)} living single')
 
+        return living_single_list
 class Family:
     """ Family class to initialize family information """
 
@@ -384,3 +389,4 @@ if __name__ == "__main__":
     sprint1.us15_fewer_than_15_siblings(pt=True)
     sprint1.us30_list_living_married(pt=True)
     sprint1.us31_list_living_single(pt=True)
+
