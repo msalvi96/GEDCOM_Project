@@ -231,6 +231,31 @@ class GedcomTree:
 
         return upcoming_birthday_list
 
+    def us30_list_living_married(self, pt=False):
+        """ User story 30 list living married Author: Weihan Xu"""
+
+        living_married_list = []
+        for individual in self.individuals.values():
+            if not individual.death_date:
+                if individual.fam_s != 'NA':
+                    living_married_list.append(individual)
+        
+        if pt:
+            living_married_table = self.pretty_print(Individual.table_header, living_married_list)
+            print(f'Living Married: \n{living_married_table}')
+
+    def us31_list_living_single(self, pt=False):
+            """ User story 31 list living single Author: Weihan Xu"""
+
+            living_single_list = []
+            for individual in self.individuals.values():
+                if not individual.death_date:
+                    if individual.fam_s == 'NA':
+                        living_single_list.append(individual)
+
+            if pt:
+                living_single_table = self.pretty_print(Individual.table_header, living_single_list)
+                print(f'Living Single: \n{living_single_table}')
 
 class Family:
     """ Family class to initialize family information """
@@ -357,4 +382,5 @@ if __name__ == "__main__":
     ms_us38 = sprint1.us38_upcoming_birthdays(pt=True)
     sprint1.us14_multiple_births_fewer_than_6(pt=True)
     sprint1.us15_fewer_than_15_siblings(pt=True)
-    
+    sprint1.us30_list_living_married(pt=True)
+    sprint1.us31_list_living_single(pt=True)
