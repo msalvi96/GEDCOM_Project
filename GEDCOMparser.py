@@ -262,6 +262,8 @@ class GedcomTree:
             print(f'There are {len(living_single_list)} living single')
 
         return living_single_list
+    
+
 class Family:
     """ Family class to initialize family information """
 
@@ -381,7 +383,7 @@ class Individual:
 if __name__ == "__main__":
     """ Workflow """
 
-    sprint1 = GedcomTree(r'./Mrunal_Salvi_GEDCOM_us14us15.ged', pt=True)
+    sprint1 = GedcomTree(r'./Sprint1_test_GEDCOM.ged', pt=True)
 
     ms_us33 = sprint1.us33_list_orphans(pt=True)
     ms_us38 = sprint1.us38_upcoming_birthdays(pt=True)
@@ -389,4 +391,5 @@ if __name__ == "__main__":
     sprint1.us15_fewer_than_15_siblings(pt=True)
     sprint1.us30_list_living_married(pt=True)
     sprint1.us31_list_living_single(pt=True)
+    
 
