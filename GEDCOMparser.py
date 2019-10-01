@@ -6,6 +6,7 @@ Analysing GEDCOM Data
 import os
 import datetime
 from prettytable import PrettyTable
+import uuid
 
 
 class GedcomTree:
@@ -35,6 +36,7 @@ class GedcomTree:
     }
 
     current_date = datetime.datetime.today()
+    date_format = "%Y-%m-%d"
 
     def __init__(self, path, pt=False):
         self.path = path
@@ -67,10 +69,27 @@ class GedcomTree:
 
         if pt:
             
-            indi_table = self.pretty_print(Individual.table_header, self.individuals.values())
+            indi_data_rows = [indi.pt_row() for indi in self.individuals.values()]
+            indi_table = self.pretty_print(Individual.table_header, indi_data_rows)
             print(f'Individual Summary:\n{indi_table}')
 
-            fam_table = self.pretty_print(Family.table_header, self.families.values())
+            family_data_rows = []
+            for fam in self.families.values():
+                if fam.husband:
+                    husband_id = fam.husband
+
+                if fam.wife:
+                    wife_id = fam.wife
+
+                for individual in self.individuals.values():
+                    if husband_id == individual.indi_id:
+                        husband_name = individual.name
+
+                    if wife_id == individual.indi_id:
+                        wife_name = individual.name
+
+                family_data_rows.append([fam.fam_id, fam.marriage_date.strftime(GedcomTree.date_format) if fam.marriage_date else 'NA', fam.divorced, husband_id, husband_name, wife_id, wife_name, [child for child in fam.children]])
+            fam_table = self.pretty_print(Family.table_header, family_data_rows)
             print(f'Family Summary: \n{fam_table}')
 
 
@@ -122,9 +141,10 @@ class GedcomTree:
 
                 #While loop to iterate over INDI tags
                 while len(line) == 4 and line[0] == '0' and line[1] == "INDI":
+                        
                     indi = Individual(line[2])  #creating new individual with id in line
                     indi.data_lines.append(line) #for storing corresponding line numbers
-                    self.individuals[line[2]] = indi    #store object in 'individuals' dictionary with key as id and value as object
+                    self.individuals[uuid.uuid4()] = indi    #store object in 'individuals' dictionary with key as id and value as object
                     line = next(data_iter)
 
                     while line[0] != '0':   #loop until next line level becomes 0
@@ -144,7 +164,7 @@ class GedcomTree:
                 while len(line) == 4 and line[0] == '0' and line[1] == "FAM":
                     family = Family(line[2]) #creating new family with id in line
                     family.data_lines.append(line) #for storing corresponding line number
-                    self.families[line[2]] = family #store object in 'families' dictionary with key as id and value as object
+                    self.families[uuid.uuid4()] = family #store object in 'families' dictionary with key as id and value as object
                     line = next(data_iter)
 
                     while line[0] != '0':   #loop until next line level becomes 0
@@ -156,10 +176,10 @@ class GedcomTree:
                                 setattr(family, GedcomTree.fam_dict[line[1]], datetime.datetime.strptime(second_line[2], '%d %b %Y')) #set familiy attributes
 
                             elif line[1] in ('HUSB', 'WIFE'):
-                                setattr(family, GedcomTree.fam_dict[line[1]], self.individuals[line[2]]) #assign 'individual' objects to family properties
+                                setattr(family, GedcomTree.fam_dict[line[1]], line[2]) #assign 'individual' objects to family properties
 
                             elif line[1] in ('CHIL'):
-                                family.children.append(self.individuals[line[2]]) # append children list using individual objects.
+                                family.children.append(line[2]) # append children list using individual objects.
 
                             line = next(data_iter)
 
@@ -169,93 +189,185 @@ class GedcomTree:
         
         table = PrettyTable()
         table.field_names = fields
-        for row in data_rows:
-            table.add_row(row.pt_row())
+        if len(data_rows) != 0:
+            for row in data_rows:
+                table.add_row(row)
 
-        return table
+            return table
 
-    def us14_multiple_births_fewer_than_6(self, pt=False):
+        else:
+            return "No data"
+
+    def log_error(self, error_type, entity_type, user_story, line_number, entity_id, error_string):
+        """ Method to log errors in a GEDCOM file """
+
+        if error_type == "ERROR":
+            if entity_type in ("FAMILY", "INDIVIDUAL"):
+                self.error_log.append(f'{error_type}: {entity_type}: {user_story}: {line_number}: {entity_id}: {error_string}')
+
+    def us14_multiple_births_fewer_than_6(self, debug=False):
         """ User Story 14 - No more than 5 siblings should be born at a time """
 
-        birthday_list = []
-        checked_birthdays = []
+        family_list = []
         for family in self.families.values():
+            birthday_list = []
+            checked_birthdays = []
             for child in family.children:
                 for individual in self.individuals.values():
-                    if individual.indi_id == child.indi_id:
+                    if individual.indi_id == child:
                         birthday_list.append(individual.birth_date)
-            for bday in birthday_list:
-                if birthday_list.count(bday) > 5 and checked_birthdays.count(bday) == 0 and pt:
-                    print(f'ERROR: FAMILY: US014: '+family.fam_id+': '+str(birthday_list.count(bday))+' children born on same day.')
-                    checked_birthdays.append(bday)
-            birthday_list.clear()
-            checked_birthdays.clear()
 
-    def us15_fewer_than_15_siblings(self, pt=False):
+            for bday in birthday_list:
+                if birthday_list.count(bday) > 5 and checked_birthdays.count(bday) == 0:
+                    checked_birthdays.append(bday)
+                    family_list.append(family.fam_id)
+                    self.log_error("ERROR", "FAMILY", "US14", family.line_number["CHIL"][0][1], family.fam_id, f"{birthday_list.count(bday)} children born on the same day")
+        
+        if debug:
+            return family_list
+
+    def us15_fewer_than_15_siblings(self, debug=False):
         """ User Story 15 - There should be fewer than 15 children in a family """
 
+        family_list = []
         for family in self.families.values():
             if len(family.children) >= 15:
-                if pt:
-                    print(f'ERROR: FAMILY: US015: '+family.fam_id+': Family has '+str(len(family.children))+' children.')
+                family_list.append(family.fam_id)
+                self.log_error("ERROR", "FAMILY", "US15", family.line_number["CHIL"][0][1], family.fam_id, f"Family has {len(family.children)} children")
+        if debug:
+            return family_list        
 
-    def us33_list_orphans(self, pt=False):
+    def us33_list_orphans(self, pt=False, debug=False):
         """ User Story 33 - List all orphaned children (both parents dead and child < 18 years old) """
         
         orphan_list = []
         for family in self.families.values():
-            if family.husband.death_date and family.wife.death_date and len(family.children) != 0:
-                for child in family.children:
-                    if child.age < 18:
-                        orphan_list.append(child)
+            if family.husband and family.wife:
+                for individual in self.individuals.values():
+                    if family.husband == individual.indi_id:
+                        husband = individual
+
+                    if family.wife == individual.indi_id:
+                        wife = individual
+
+                if husband.death_date and wife.death_date and len(family.children) != 0:
+                    for child in family.children:
+                        for individual in self.individuals.values():
+                            if child == individual.indi_id:
+                                child_indi = individual
+
+                        if child_indi.age < 18:
+                            orphan_list.append(child_indi.pt_row())
                 
         if pt:
             orphan_table = self.pretty_print(Individual.table_header, orphan_list)
             print(f'Summary of Orphans: \n{orphan_table}')
 
-        return orphan_list
+        if debug:
+            return orphan_list
 
-    def us38_upcoming_birthdays(self, pt=False):
+    def us38_upcoming_birthdays(self, pt=False, debug=False):
         """ User Story 38 - List all living people whose birthdays occur in the next 30 days """
         
         upcoming_birthday_list = []
+        debug_list = []
         time_delta = datetime.timedelta(days=30)
         for individual in self.individuals.values():
             if not individual.death_date:
                 if individual.birthday >= GedcomTree.current_date and individual.birthday <= (GedcomTree.current_date + time_delta):
-                    upcoming_birthday_list.append(individual)
+                    upcoming_birthday_list.append(individual.pt_row())
+                    debug_list.append(individual.birthday - GedcomTree.current_date)
 
         if pt:
             birthday_table = self.pretty_print(Individual.table_header, upcoming_birthday_list)
             print(f'Upcoming Birthdays: \n{birthday_table}')
 
-        return upcoming_birthday_list
+        if debug:
+            return debug_list
 
-    def us30_list_living_married(self, pt=False):
+    def us30_list_living_married(self, pt=False, debug=False):
         """ User story 30 list living married Author: Weihan Xu"""
 
         living_married_list = []
         for individual in self.individuals.values():
             if not individual.death_date:
                 if individual.fam_s != 'NA':
-                    living_married_list.append(individual)
+                    living_married_list.append(individual.pt_row())
         
         if pt:
             living_married_table = self.pretty_print(Individual.table_header, living_married_list)
             print(f'Living Married: \n{living_married_table}')
 
-    def us31_list_living_single(self, pt=False):
-            """ User story 31 list living single Author: Weihan Xu"""
+        if debug:
+            return living_married_list
 
-            living_single_list = []
-            for individual in self.individuals.values():
-                if not individual.death_date:
-                    if individual.fam_s == 'NA':
-                        living_single_list.append(individual)
+    def us31_list_living_single(self, pt=False, debug=False):
+        """ User story 31 list living single Author: Weihan Xu"""
 
-            if pt:
-                living_single_table = self.pretty_print(Individual.table_header, living_single_list)
-                print(f'Living Single: \n{living_single_table}')
+        living_single_list = []
+        for individual in self.individuals.values():
+            if not individual.death_date:
+                if individual.fam_s == 'NA':
+                    living_single_list.append(individual.pt_row())
+
+        if pt:
+            living_single_table = self.pretty_print(Individual.table_header, living_single_list)
+            print(f'Living Single: \n{living_single_table}')
+
+        if debug:
+            return living_single_list
+
+    def us22_unique_ids(self, debug=False):
+        """ User story 22 - All individual and family ids should be unique """
+
+        unique_indi_ids = []
+        unique_fam_ids = []
+        overall_unique_ids = []
+        overall_duplicate_ids = []
+        for individual in self.individuals.values():
+            if individual.indi_id in unique_indi_ids:
+                self.log_error("ERROR", "INDIVIDUAL", "US22", individual.line_number["INDI"], individual.indi_id, f"{individual.indi_id} already exists.")
+                overall_duplicate_ids.append(individual.indi_id)
+            else:
+                unique_indi_ids.append(individual.indi_id)
+                overall_unique_ids.append(individual.indi_id)
+        for family in self.families.values():
+            if family.fam_id in unique_fam_ids:
+                self.log_error("ERROR", "FAMILY", "US22", family.line_number["FAM"], family.fam_id, f"{family.fam_id} already exists.")
+                overall_duplicate_ids.append(individual.indi_id)
+            else:
+                unique_fam_ids.append(family.fam_id)
+                overall_unique_ids.append(individual.indi_id)
+
+        if debug:
+            return overall_unique_ids, overall_duplicate_ids
+
+    def us16_male_lastname(self, debug=False):
+        """ User Story 16 - All male members in a family should have the same last name """
+        
+        error_list = []
+        for family in self.families.values():
+            children_individual = []
+            if family.husband:
+                for individual in self.individuals.values():
+                    if family.husband == individual.indi_id:
+                        husband_last_name = individual.full_name["lastName"]
+                        break
+                if husband_last_name and len(family.children) != 0:
+                    for child_id in family.children:
+                        for individual in self.individuals.values():
+                            if child_id == individual.indi_id:
+                                children_individual.append(individual)
+
+                    for child in children_individual:
+                        child_last_name = child.full_name["lastName"]
+                        if child.sex == 'M':
+                            if child_last_name != husband_last_name:
+                                self.log_error("ERROR", "FAMILY", "US16", family.line_number["CHIL"][0][1], {family.fam_id}, f"Child with id {child.indi_id} does not have the same last name as parent")
+                                error_list.append(family)
+        
+        if debug:
+            return error_list
 
 class Family:
     """ Family class to initialize family information """
@@ -298,9 +410,6 @@ class Family:
 
         return divorced
     
-    def pt_row(self):
-        return [self.fam_id, self.marriage_date.strftime("%Y-%m-%d") if self.marriage_date else 'NA', self.divorced, self.husband.indi_id, self.husband.name, self.wife.indi_id, self.wife.name, [child.indi_id for child in self.children]]
-
 class Individual:
     """ Individual class to initialize individual information """
 
@@ -355,19 +464,10 @@ class Individual:
             return birthday
 
     @property
-    def first_name(self):
+    def full_name(self):
         if self.name and len(self.name.split('/')) >= 2:
-            name = self.name.split('/')
-            first_name = name[0]
-            return first_name
-    
-    @property
-    def last_name(self):
-        if self.name and len(self.name.split('/')) >= 2:
-            name = self.name.split('/')
-            last_name = name[1]
-            return last_name
-            
+            name = [x.strip() for x in self.name.split('/')]
+            return {'firstName': name[0], 'lastName': name[1]}
 
     def pt_row(self):
         return [self.indi_id, self.name, self.sex, self.birth_date.strftime("%Y-%m-%d"), self.age, self.alive, self.death_date.strftime("%Y-%m-%d") if self.death_date else 'NA', self.fam_c, self.fam_s]
@@ -376,11 +476,16 @@ class Individual:
 if __name__ == "__main__":
     """ Workflow """
 
-    sprint1 = GedcomTree(r'./Mrunal_Salvi_GEDCOM_us14us15.ged', pt=True)
+    sprint1 = GedcomTree(r'./Sprint1_test_GEDCOM.ged', pt=True)
 
-    ms_us33 = sprint1.us33_list_orphans(pt=True)
-    ms_us38 = sprint1.us38_upcoming_birthdays(pt=True)
-    sprint1.us14_multiple_births_fewer_than_6(pt=True)
-    sprint1.us15_fewer_than_15_siblings(pt=True)
-    sprint1.us30_list_living_married(pt=True)
+    sprint1.us16_male_lastname()
+    sprint1.us22_unique_ids()
+    sprint1.us14_multiple_births_fewer_than_6()
+    sprint1.us15_fewer_than_15_siblings()
     sprint1.us31_list_living_single(pt=True)
+    sprint1.us30_list_living_married(pt=True)
+    sprint1.us38_upcoming_birthdays(pt=True)
+    sprint1.us33_list_orphans(pt=True)    
+    
+    for errors in sprint1.error_log:
+        print(errors)
