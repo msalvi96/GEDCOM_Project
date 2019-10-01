@@ -262,6 +262,63 @@ class GedcomTree:
             print(f'There are {len(living_single_list)} living single')
 
         return living_single_list
+
+    def us22_Unique_IDs(self, pt=False):
+        """ US-22: All individual IDs should be unique and all family IDs should be unique, 
+        Author: Vineet Singh """
+
+        ind_id = list()
+        dup_id_val = list()
+        for indiv in self.individuals:
+            ind_id.append(indiv)
+        
+        dup_indiv_id = [item for item, count in collections.Counter(ind_id).items() if count > 1]
+        if len(dup_indiv_id) != 0:
+            for indiv in self.individuals.values():
+                for i in dup_indiv_id:
+                    if indiv.ind_id == i:
+                        dup_id_val.append(indiv)
+
+        if pt:
+            dup_indiv_table = self.pretty_print(Individual.table_header, dup_id_val)
+            print(f'Individual information with duplicate id: \n{dup_indiv_table}')
+
+        fam_id = list()
+        dup_fam_val = list()
+        for fam in self.families:
+            fam_id.append(fam)
+        
+        dup_fam_id = [item for item, count in collections.Counter(fam_id).items() if count > 1]
+        if len(dup_fam_id) != 0:
+            for fam in self.families.values():
+                for i in dup_fam_id:
+                    if fam.fam_id == i:
+                        dup_fam_val.append(fam)
+
+        if pt:
+            dup_fam_table = self.pretty_print(Individual.table_header, dup_fam_val)
+            print(f'Family information with duplicate id: \n{dup_fam_table}')
+
+        return len(dup_indiv_id), len(dup_fam_id)
+
+
+    def us16_male_lastname(self, pt=False, debug=False):
+        """ US-22: All male members of a family should have the same last name, 
+        Author: Vineet Singh """
+
+        error_list = list()
+        for family in self.families.values():
+            f_lastName = family.husband.last_name
+            for children in family.children:
+                if children.sex == 'M':
+                    if children.last_name == f_lastName:
+                        continue
+                    else:
+                        error_list.append(family.fam_id)
+                        self.error_log.append('ERROR: FAMILY: US016: ' + family.fam_id + 
+                        ': Family male do not have same last name')
+
+        return error_list
     
 
 class Family:

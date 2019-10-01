@@ -25,6 +25,22 @@ class GedcomTreeTest (unittest.TestCase):
         sprint1 = GedcomTree(r'./Mrunal_Salvi_GEDCOM_us14us15.ged', pt=False)
         self.assertTrue(len(sprint1.us31_list_living_single(pt=False)) == 25)
 
+    def test_positive_us22_Unique_ID_length(self):
+        sprint1 = GedcomTree(r'./postive_GEDCOM.ged', pt=False)
+        tup_len = sprint1.us22_Unique_IDs(pt=False)
+        self.assertTrue(tup_len[0] == 0)
+        self.assertTrue(tup_len[1] == 0)
+
+    def test_positive_us16_male_lastname(self):
+        sprint1 = GedcomTree(r'./postive_GEDCOM.ged', pt=False)
+        error = sprint1.us16_male_lastname(pt=False)
+        self.assertTrue(len(error) == 0)
+
+    def test_negative_us16_male_lastname(self):
+        sprint1 = GedcomTree(r'./negative_GEDCOM.ged', pt=False)
+        error = sprint1.us16_male_lastname(pt=False)
+        self.assertTrue(len(error) != 0)
+
 
 if __name__ == '__main__':
     unittest.main(exit=False, verbosity=2)
