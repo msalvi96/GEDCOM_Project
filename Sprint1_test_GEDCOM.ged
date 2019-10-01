@@ -12,7 +12,7 @@
 1 SUBN
 1 CHAR UTF-8
 0 @I1@ INDI
-1 NAME Mrunal /Salvi/
+1 NAME Mrunal /Sal/
 2 GIVN Mrunal
 2 SURN Salvi
 2 _MARNM Salvi
@@ -49,7 +49,7 @@
 1 BIRT
 2 DATE 10 APR 2002
 1 FAMC @F1@
-0 @I5@ INDI
+0 @I2@ INDI
 1 NAME Manohar /Salvi/
 2 GIVN Manohar
 2 SURN Salvi
@@ -515,7 +515,7 @@
 1 CHIL @I4@
 1 _CURRENT Y
 0 @F2@ FAM
-1 HUSB @I5@
+1 HUSB @I2@
 1 WIFE @I6@
 1 CHIL @I2@
 1 CHIL @I50@
@@ -530,7 +530,7 @@
 0 @F4@ FAM
 1 HUSB @I17@
 1 WIFE @I18@
-1 CHIL @I5@
+1 CHIL @I2@
 1 CHIL @I19@
 1 CHIL @I30@
 1 _CURRENT Y
@@ -570,7 +570,7 @@
 1 CHIL @I28@
 1 CHIL @I29@
 1 _CURRENT Y
-0 @F9@ FAM
+0 @F1@ FAM
 1 HUSB @I19@
 1 WIFE @I21@
 1 CHIL @I22@
