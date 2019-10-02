@@ -38,7 +38,7 @@ class GedcomTree:
     current_date = datetime.datetime.today()
     date_format = "%Y-%m-%d"
 
-    def __init__(self, path, pt=False):
+    def __init__(self, path, pt=False, write=False):
         self.path = path
         self.individuals = dict()
         self.families = dict()
@@ -46,6 +46,7 @@ class GedcomTree:
         self.comment_log = []
         self.error_log = []
         self.invalid_tags = []
+        self.write_to_file = []
 
         if not os.path.exists(self.path):
             raise FileNotFoundError
@@ -67,30 +68,39 @@ class GedcomTree:
                 
         self.data_processing()
 
-        if pt:
+        # if pt:
             
-            indi_data_rows = [indi.pt_row() for indi in self.individuals.values()]
-            indi_table = self.pretty_print(Individual.table_header, indi_data_rows)
+        indi_data_rows = [indi.pt_row() for indi in self.individuals.values()]
+        indi_table = self.pretty_print(Individual.table_header, indi_data_rows)
+        
+
+        family_data_rows = []
+        for fam in self.families.values():
+            if fam.husband:
+                husband_id = fam.husband
+
+            if fam.wife:
+                wife_id = fam.wife
+
+            for individual in self.individuals.values():
+                if husband_id == individual.indi_id:
+                    husband_name = individual.name
+
+                if wife_id == individual.indi_id:
+                    wife_name = individual.name
+
+            family_data_rows.append([fam.fam_id, fam.marriage_date.strftime(GedcomTree.date_format) if fam.marriage_date else 'NA', fam.divorced, husband_id, husband_name, wife_id, wife_name, [child for child in fam.children]])
+        fam_table = self.pretty_print(Family.table_header, family_data_rows)
+
+        if pt:
             print(f'Individual Summary:\n{indi_table}')
-
-            family_data_rows = []
-            for fam in self.families.values():
-                if fam.husband:
-                    husband_id = fam.husband
-
-                if fam.wife:
-                    wife_id = fam.wife
-
-                for individual in self.individuals.values():
-                    if husband_id == individual.indi_id:
-                        husband_name = individual.name
-
-                    if wife_id == individual.indi_id:
-                        wife_name = individual.name
-
-                family_data_rows.append([fam.fam_id, fam.marriage_date.strftime(GedcomTree.date_format) if fam.marriage_date else 'NA', fam.divorced, husband_id, husband_name, wife_id, wife_name, [child for child in fam.children]])
-            fam_table = self.pretty_print(Family.table_header, family_data_rows)
             print(f'Family Summary: \n{fam_table}')
+
+        if write:
+            indi_header = "Individual Summary:"
+            self.write_to_file.append([indi_header, indi_table])
+            fam_header = "Family Summary:"
+            self.write_to_file.append([fam_header, fam_table])
 
 
     @staticmethod
@@ -237,7 +247,7 @@ class GedcomTree:
         if debug:
             return family_list        
 
-    def us33_list_orphans(self, pt=False, debug=False):
+    def us33_list_orphans(self, pt=False, debug=False, write=False):
         """ User Story 33 - List all orphaned children (both parents dead and child < 18 years old) """
         
         orphan_list = []
@@ -258,15 +268,20 @@ class GedcomTree:
 
                         if child_indi.age < 18:
                             orphan_list.append(child_indi.pt_row())
-                
+
+        orphan_table = self.pretty_print(Individual.table_header, orphan_list)
+        
         if pt:
-            orphan_table = self.pretty_print(Individual.table_header, orphan_list)
             print(f'Summary of Orphans: \n{orphan_table}')
 
         if debug:
             return orphan_list
 
-    def us38_upcoming_birthdays(self, pt=False, debug=False):
+        if write:
+            orphan_header = "Summary of Orphans:"
+            self.write_to_file.append([orphan_header, orphan_table])
+
+    def us38_upcoming_birthdays(self, pt=False, debug=False, write=False):
         """ User Story 38 - List all living people whose birthdays occur in the next 30 days """
         
         upcoming_birthday_list = []
@@ -278,14 +293,19 @@ class GedcomTree:
                     upcoming_birthday_list.append(individual.pt_row())
                     debug_list.append(individual.birthday - GedcomTree.current_date)
 
+        birthday_table = self.pretty_print(Individual.table_header, upcoming_birthday_list)
+        
         if pt:
-            birthday_table = self.pretty_print(Individual.table_header, upcoming_birthday_list)
             print(f'Upcoming Birthdays: \n{birthday_table}')
 
         if debug:
             return debug_list
 
-    def us30_list_living_married(self, pt=False, debug=False):
+        if write:
+            birthday_header = "Upcoming Birthdays:"
+            self.write_to_file.append([birthday_header, birthday_table])
+
+    def us30_list_living_married(self, pt=False, debug=False, write=False):
         """ User story 30 list living married Author: Weihan Xu"""
 
         living_married_list = []
@@ -294,14 +314,19 @@ class GedcomTree:
                 if individual.fam_s != 'NA':
                     living_married_list.append(individual.pt_row())
         
-        if pt:
-            living_married_table = self.pretty_print(Individual.table_header, living_married_list)
+        living_married_table = self.pretty_print(Individual.table_header, living_married_list)
+        
+        if pt:    
             print(f'Living Married: \n{living_married_table}')
 
         if debug:
             return living_married_list
 
-    def us31_list_living_single(self, pt=False, debug=False):
+        if write:
+            living_header = "Living Married:"
+            self.write_to_file.append([living_header, living_married_table])
+
+    def us31_list_living_single(self, pt=False, debug=False, write=False):
         """ User story 31 list living single Author: Weihan Xu"""
 
         living_single_list = []
@@ -310,12 +335,17 @@ class GedcomTree:
                 if individual.fam_s == 'NA':
                     living_single_list.append(individual.pt_row())
 
-        if pt:
-            living_single_table = self.pretty_print(Individual.table_header, living_single_list)
+        living_single_table = self.pretty_print(Individual.table_header, living_single_list)
+        
+        if pt:    
             print(f'Living Single: \n{living_single_table}')
 
         if debug:
             return living_single_list
+
+        if write:
+            single_header = "Living Single:"
+            self.write_to_file.append([single_header, living_single_table])
 
     def us22_unique_ids(self, debug=False):
         """ User story 22 - All individual and family ids should be unique """
@@ -477,7 +507,6 @@ if __name__ == "__main__":
     """ Workflow """
 
     sprint1 = GedcomTree(r'./Sprint1_test_GEDCOM.ged', pt=True)
-
     sprint1.us16_male_lastname()
     sprint1.us22_unique_ids()
     sprint1.us14_multiple_births_fewer_than_6()
@@ -485,7 +514,34 @@ if __name__ == "__main__":
     sprint1.us31_list_living_single(pt=True)
     sprint1.us30_list_living_married(pt=True)
     sprint1.us38_upcoming_birthdays(pt=True)
-    sprint1.us33_list_orphans(pt=True)    
-    
+    sprint1.us33_list_orphans(pt=True)
+
     for errors in sprint1.error_log:
         print(errors)
+    
+    write = False
+
+    if write:
+        try:
+            fp = open(r'./test_results/sprint1_results.txt', 'w')
+
+        except FileNotFoundError:
+            print("Can't Open!")
+        else:
+            with fp:
+                sprint = GedcomTree(r'./Sprint1_test_GEDCOM.ged', pt=False, write=True)
+                sprint.us14_multiple_births_fewer_than_6()
+                sprint.us15_fewer_than_15_siblings()
+                sprint.us33_list_orphans(write=True)
+                sprint.us38_upcoming_birthdays(write=True)
+                sprint.us30_list_living_married(write=True)
+                sprint.us31_list_living_single(write=True)
+                sprint.us22_unique_ids()
+                sprint.us16_male_lastname()
+                
+                for i in sprint.write_to_file:
+                    for content in i:
+                        fp.write(f'{str(content)}\n')
+
+                for errors in sprint.error_log:
+                    fp.write(f'{errors}\n')
