@@ -1,20 +1,19 @@
 """
-Author: Mrunal Salvi
-SSW 555 Project 03
+Authors: Mrunal Salvi, David Ovsiew, Vineet Singh, Weihan Xu
+SSW 555
 Analysing GEDCOM Data
 """
 import os
 import datetime
-from prettytable import PrettyTable
 import uuid
-
+from prettytable import PrettyTable
 
 class GedcomTree:
     """ GEDCOM Tree class to process and store data from GEDCOM files """
 
     valid_dict = {'0': ['INDI', 'FAM', 'HEAD', 'TRLR', 'NOTE'],
-            '1': ['NAME', 'SEX', 'BIRT', 'DEAT', 'FAMC', 'FAMS', 'MARR', 'HUSB', 'WIFE', 'CHIL', 'DIV'],
-            '2': ['DATE']}
+                  '1': ['NAME', 'SEX', 'BIRT', 'DEAT', 'FAMC', 'FAMS', 'MARR', 'HUSB', 'WIFE', 'CHIL', 'DIV'],
+                  '2': ['DATE']}
 
     exception_list = ['FAM', 'INDI']
 
@@ -63,16 +62,13 @@ class GedcomTree:
                     line = line.strip('\n')
                     split_line = line.split(' ', 2)
 
-                    split_line = self.checkExceptionTag(split_line)
-                    valid_line = self.checkValidTag(index, split_line)
-                
+                    split_line = self.check_exception_tag(split_line)
+                    valid_line = self.check_valid_tag(index, split_line)
+
         self.data_processing()
 
-        # if pt:
-            
         indi_data_rows = [indi.pt_row() for indi in self.individuals.values()]
         indi_table = self.pretty_print(Individual.table_header, indi_data_rows)
-        
 
         family_data_rows = []
         for fam in self.families.values():
@@ -104,7 +100,7 @@ class GedcomTree:
 
 
     @staticmethod
-    def checkExceptionTag(split_line):
+    def check_exception_tag(split_line):
         """ Function to work on exception tags FAM/INDI """
 
         for value in GedcomTree.exception_list:
@@ -115,7 +111,7 @@ class GedcomTree:
         return split_line
 
 
-    def checkValidTag(self, index, split_line):
+    def check_valid_tag(self, index, split_line):
         """ Function to check valid tags """
 
         level = split_line[0]
@@ -133,7 +129,7 @@ class GedcomTree:
 
     def data_processing(self):
         """ Function to process the raw data and assign individuals and families to data structure. """
-    
+
         data_iter = iter(self.raw_data)
 
         while True:
@@ -142,7 +138,7 @@ class GedcomTree:
 
             except StopIteration:
                 break
-            
+
             else:
 
                 #Conditional statement for comment lines
@@ -151,7 +147,7 @@ class GedcomTree:
 
                 #While loop to iterate over INDI tags
                 while len(line) == 4 and line[0] == '0' and line[1] == "INDI":
-                        
+
                     indi = Individual(line[2])  #creating new individual with id in line
                     indi.data_lines.append(line) #for storing corresponding line numbers
                     self.individuals[uuid.uuid4()] = indi    #store object in 'individuals' dictionary with key as id and value as object
@@ -188,7 +184,7 @@ class GedcomTree:
                             elif line[1] in ('HUSB', 'WIFE'):
                                 setattr(family, GedcomTree.fam_dict[line[1]], line[2]) #assign 'individual' objects to family properties
 
-                            elif line[1] in ('CHIL'):
+                            elif line[1] == 'CHIL':
                                 family.children.append(line[2]) # append children list using individual objects.
 
                             line = next(data_iter)
@@ -196,7 +192,7 @@ class GedcomTree:
     @staticmethod
     def pretty_print(fields, data_rows):
         """ Method to print pretty tables """
-        
+
         table = PrettyTable()
         table.field_names = fields
         if len(data_rows) != 0:
@@ -205,13 +201,12 @@ class GedcomTree:
 
             return table
 
-        else:
-            return "No data"
+        return "No data"
 
     def log_error(self, error_type, entity_type, user_story, line_number, entity_id, error_string):
         """ Method to log errors in a GEDCOM file """
 
-        if error_type == "ERROR":
+        if error_type in ("ERROR", "ANOMALY"):
             if entity_type in ("FAMILY", "INDIVIDUAL"):
                 self.error_log.append(f'{error_type}: {entity_type}: {user_story}: {line_number}: {entity_id}: {error_string}')
 
@@ -232,7 +227,7 @@ class GedcomTree:
                     checked_birthdays.append(bday)
                     family_list.append(family.fam_id)
                     self.log_error("ERROR", "FAMILY", "US14", family.line_number["CHIL"][0][1], family.fam_id, f"{birthday_list.count(bday)} children born on the same day")
-        
+
         if debug:
             return family_list
 
@@ -245,11 +240,11 @@ class GedcomTree:
                 family_list.append(family.fam_id)
                 self.log_error("ERROR", "FAMILY", "US15", family.line_number["CHIL"][0][1], family.fam_id, f"Family has {len(family.children)} children")
         if debug:
-            return family_list        
+            return family_list
 
     def us33_list_orphans(self, pt=False, debug=False, write=False):
         """ User Story 33 - List all orphaned children (both parents dead and child < 18 years old) """
-        
+
         orphan_list = []
         for family in self.families.values():
             if family.husband and family.wife:
@@ -270,7 +265,7 @@ class GedcomTree:
                             orphan_list.append(child_indi.pt_row())
 
         orphan_table = self.pretty_print(Individual.table_header, orphan_list)
-        
+
         if pt:
             print(f'Summary of Orphans: \n{orphan_table}')
 
@@ -283,7 +278,7 @@ class GedcomTree:
 
     def us38_upcoming_birthdays(self, pt=False, debug=False, write=False):
         """ User Story 38 - List all living people whose birthdays occur in the next 30 days """
-        
+
         upcoming_birthday_list = []
         debug_list = []
         time_delta = datetime.timedelta(days=30)
@@ -294,7 +289,7 @@ class GedcomTree:
                     debug_list.append(individual.birthday - GedcomTree.current_date)
 
         birthday_table = self.pretty_print(Individual.table_header, upcoming_birthday_list)
-        
+
         if pt:
             print(f'Upcoming Birthdays: \n{birthday_table}')
 
@@ -313,10 +308,10 @@ class GedcomTree:
             if not individual.death_date:
                 if individual.fam_s != 'NA':
                     living_married_list.append(individual.pt_row())
-        
+
         living_married_table = self.pretty_print(Individual.table_header, living_married_list)
-        
-        if pt:    
+
+        if pt:
             print(f'Living Married: \n{living_married_table}')
 
         if debug:
@@ -336,8 +331,8 @@ class GedcomTree:
                     living_single_list.append(individual.pt_row())
 
         living_single_table = self.pretty_print(Individual.table_header, living_single_list)
-        
-        if pt:    
+
+        if pt:
             print(f'Living Single: \n{living_single_table}')
 
         if debug:
@@ -374,7 +369,7 @@ class GedcomTree:
 
     def us16_male_lastname(self, debug=False):
         """ User Story 16 - All male members in a family should have the same last name """
-        
+
         error_list = []
         for family in self.families.values():
             children_individual = []
@@ -393,11 +388,66 @@ class GedcomTree:
                         child_last_name = child.full_name["lastName"]
                         if child.sex == 'M':
                             if child_last_name != husband_last_name:
-                                self.log_error("ERROR", "FAMILY", "US16", family.line_number["CHIL"][0][1], {family.fam_id}, f"Child with id {child.indi_id} does not have the same last name as parent")
+                                self.log_error("ERROR", "FAMILY", "US16", family.line_number["CHIL"][0][1], family.fam_id, f"Child with id {child.indi_id} does not have the same last name as parent")
                                 error_list.append(family)
-        
+
         if debug:
             return error_list
+
+    def us08_birth_before_marriage_of_parents(self, debug=False):
+        """ User Story 08 - Children should be born after marriage of parents and not more than 9 months after their divorce """
+
+        debug_list = []
+        for family in self.families.values():
+            if family.marriage_date:
+                children_list = []
+
+                for individual in self.individuals.values():
+                    for children in family.children:
+                        if individual.indi_id == children:
+                            children_list.append(individual)
+
+                for child in children_list:
+                    if child.birth_date < family.marriage_date:
+                        self.log_error("ANOMALY", "FAMILY", "US08", family.line_number["CHIL"][0][1], family.fam_id, f"Child with id {child.indi_id} born {child.birth_date.strftime(GedcomTree.date_format)} before marriage of parents on {family.marriage_date.strftime(GedcomTree.date_format)}")
+                        debug_list.append(child.indi_id)
+                    if family.divorced and child.birth_date > (family.divorce_date + datetime.timedelta(9*365/12)):
+                        self.log_error("ANOMALY", "FAMILY", "US08", family.line_number["CHIL"][0][1], family.fam_id, f"Child with id {child.indi_id} born {child.birth_date.strftime(GedcomTree.date_format)} after the divorce of parents on {family.divorce_date.strftime(GedcomTree.date_format)}")
+                        debug_list.append(child.indi_id)
+
+        if debug:
+            return debug_list
+
+    def us09_birth_before_death_of_parents(self, debug=False):
+        """ User Story 09 - Children should be born before death of mother and before 9 months after death of father """
+
+        debug_list = []
+        for family in self.families.values():
+            if family.husband and family.wife and len(family.children) != 0:
+                children_list = []
+
+                for individual in self.individuals.values():
+                    if individual.indi_id == family.husband:
+                        husband = individual
+
+                    if individual.indi_id == family.wife:
+                        wife = individual
+
+                    for children in family.children:
+                        if individual.indi_id == children:
+                            children_list.append(individual)
+
+                for child in children_list:
+                    if wife.death_date and child.birth_date > wife.death_date:
+                        self.log_error("ANOMALY", "FAMILY", "US09", family.line_number["CHIL"][0][1], family.fam_id, f"Child with id {child.indi_id} born {child.birth_date.strftime(GedcomTree.date_format)} after mother's death on {wife.death_date.strftime(GedcomTree.date_format)}")
+                        debug_list.append(child.indi_id)
+
+                    if husband.death_date and child.birth_date > (husband.death_date + datetime.timedelta(9*365/12)):
+                        self.log_error("ANOMALY", "FAMILY", "US09", family.line_number["CHIL"][0][1], family.fam_id, f"Child with id {child.indi_id} born {child.birth_date.strftime(GedcomTree.date_format)} more than 9 months after father's death on {husband.death_date.strftime(GedcomTree.date_format)}")
+                        debug_list.append(child.indi_id)
+
+        if debug:
+            return debug_list
 
 class Family:
     """ Family class to initialize family information """
@@ -405,6 +455,8 @@ class Family:
     table_header = ['ID', 'Married', 'Divorced', 'Husband ID', 'Husband Name', 'Wife ID', 'Wife Name', 'Children']
 
     def __init__(self, fam_id):
+        """ Initialise properties for family object """
+
         self.fam_id = fam_id
         self.marriage_date = None
         self.divorce_date = None
@@ -415,6 +467,8 @@ class Family:
 
     @property
     def line_number(self):
+        """ Associate GEDCOM source line numbers with family object """
+
         data_iter = iter(self.data_lines)
         line_dict = {}
         child_array = []
@@ -426,7 +480,7 @@ class Family:
                 second_line = next(data_iter)
                 line_dict[line[1]] = second_line[3]
 
-            elif line[1] in ('CHIL'):
+            elif line[1] == 'CHIL':
                 child_array.append((line[2], line[3]))
 
         line_dict['CHIL'] = child_array
@@ -434,18 +488,22 @@ class Family:
 
     @property
     def divorced(self):
+        """ Define family objecct property divorced """
+
         divorced = False
         if self.divorce_date:
             divorced = True
 
         return divorced
-    
+
 class Individual:
     """ Individual class to initialize individual information """
 
     table_header = ['ID', 'Name', 'Gender', 'Birthday', 'Age', 'Alive', 'Death', 'Child', 'Spouse']
 
     def __init__(self, indi_id):
+        """ Initialize properties of Individual object """
+
         self.indi_id = indi_id
         self.name = ''
         self.sex = ''
@@ -455,9 +513,10 @@ class Individual:
         self.fam_s = 'NA'
         self.data_lines = []
 
-
     @property
     def line_number(self):
+        """ Associate GEDCOM source lines with Individual object """
+
         data_iter = iter(self.data_lines)
         line_dict = {}
 
@@ -469,18 +528,20 @@ class Individual:
                 second_line = next(data_iter)
                 line_dict[line[1]] = second_line[3]
 
-        return line_dict  
+        return line_dict
 
     @property
     def age(self):
+        """ Associate age with Individual object """
+
         if self.birth_date:
             age = GedcomTree.current_date - self.birth_date if not self.death_date else self.death_date - self.birth_date
             return (age.days + age.seconds // 86400) // 365
-        else:
-            return 'No birth date.'
 
     @property
     def alive(self):
+        """ Set alive status to true or false """
+
         alive = True
         if self.death_date:
             alive = False
@@ -489,24 +550,29 @@ class Individual:
 
     @property
     def birthday(self):
-        if self.birth_date:        
+        """ Set birthday for the individual """
+
+        if self.birth_date:
             birthday = datetime.datetime(GedcomTree.current_date.year, self.birth_date.month, self.birth_date.day)
             return birthday
 
     @property
     def full_name(self):
+        """ Split the name of Individual and have two properties in full_name i.e firstName and lastName """
+
         if self.name and len(self.name.split('/')) >= 2:
             name = [x.strip() for x in self.name.split('/')]
             return {'firstName': name[0], 'lastName': name[1]}
 
     def pt_row(self):
+        """ Returns a list of relevant data of the Individual for PrettyTable """
+
         return [self.indi_id, self.name, self.sex, self.birth_date.strftime("%Y-%m-%d"), self.age, self.alive, self.death_date.strftime("%Y-%m-%d") if self.death_date else 'NA', self.fam_c, self.fam_s]
 
+def sprint1_main():
+    """ Main function to run Sprint 1 User Stories """
 
-if __name__ == "__main__":
-    """ Workflow """
-
-    sprint1 = GedcomTree(r'./Sprint1_test_GEDCOM.ged', pt=True)
+    sprint1 = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=True)
     sprint1.us16_male_lastname()
     sprint1.us22_unique_ids()
     sprint1.us14_multiple_births_fewer_than_6()
@@ -518,7 +584,7 @@ if __name__ == "__main__":
 
     for errors in sprint1.error_log:
         print(errors)
-    
+
     write = False
 
     if write:
@@ -538,10 +604,24 @@ if __name__ == "__main__":
                 sprint.us31_list_living_single(write=True)
                 sprint.us22_unique_ids()
                 sprint.us16_male_lastname()
-                
+
                 for i in sprint.write_to_file:
                     for content in i:
                         fp.write(f'{str(content)}\n')
 
                 for errors in sprint.error_log:
                     fp.write(f'{errors}\n')
+
+def sprint2_main():
+    """ Main function to run Sprint 2 User Stories """
+
+    sprint2 = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True)
+    sprint2.us08_birth_before_marriage_of_parents()
+    sprint2.us09_birth_before_death_of_parents()
+
+    print('Error Log:')
+    for errors in sprint2.error_log:
+        print(f'{errors}\n')
+
+if __name__ == "__main__":
+    sprint2_main()
