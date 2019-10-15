@@ -647,8 +647,8 @@ def sprint2_main():
     """ Main function to run Sprint 2 User Stories """
 
     sprint2 = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True)
-    sprint2.us08_birth_before_marriage_of_parents()
-    sprint2.us09_birth_before_death_of_parents()
+    sprint2.us27_include_individual_ages()
+    sprint2.us06_divorce_before_death()
 
     print('Error Log:')
     for errors in sprint2.error_log:
