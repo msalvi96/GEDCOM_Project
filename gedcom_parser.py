@@ -449,6 +449,37 @@ class GedcomTree:
         if debug:
             return debug_list
 
+    def us27_include_individual_ages(self, pt = True, debug=False):
+        """ User Story 27 - Include person's current age when listing individuals """
+
+        indi_detail_list = list()
+        table_header = ['ID', 'Name', 'Age']
+        for individual in self.individuals.values():
+            indi_detail_list.append([individual.indi_id, individual.name, individual.age])
+
+        indi_table = self.pretty_print(table_header, indi_detail_list)
+
+        if pt:
+            print(f'Individuals with age: \n{indi_table}')
+
+    def us06_divorce_before_death(self, pt = True, debug=False):
+        """ User Story 27 - Divorce can only occur before death of both spouses """
+
+        divorcee_details = list()
+        table_header = ['Husband', 'H_Alive', 'Wife', 'W_Alive', 'Divorced']
+        for family in self.families.values():
+            if family.divorced:
+                for individual_h in self.individuals.values():
+                    if individual_h.indi_id == family.husband and individual_h.alive == True:
+                        for individual_w in self.individuals.values():
+                            if individual_w.indi_id == family.wife and individual_w.alive == True:
+                                divorcee_details.append([individual_h.name, individual_h.alive, individual_w.name, individual_w.alive, family.divorced])
+
+        divorcee_table = self.pretty_print(table_header, divorcee_details)
+
+        if pt:
+            print(f'Divorced couple details: \n{divorcee_table}')
+
 class Family:
     """ Family class to initialize family information """
 
@@ -616,8 +647,8 @@ def sprint2_main():
     """ Main function to run Sprint 2 User Stories """
 
     sprint2 = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True)
-    sprint2.us08_birth_before_marriage_of_parents()
-    sprint2.us09_birth_before_death_of_parents()
+    sprint2.us27_include_individual_ages()
+    sprint2.us06_divorce_before_death()
 
     print('Error Log:')
     for errors in sprint2.error_log:
