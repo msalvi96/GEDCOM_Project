@@ -7,3 +7,4 @@ install:
 # command to run tests
 script:
   - python sprint1_tests.py
+  - python sprint2_tests.py

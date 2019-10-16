@@ -449,7 +449,90 @@ class GedcomTree:
         if debug:
             return debug_list
 
-    def us27_include_individual_ages(self, pt = True, debug=False):
+    def us35_list_recent_births(self, pt=False, debug=False, write=False):
+        """ User Story 35 - list all people in a GEDCOM file who were born in the past 30 days """
+
+        recent_births = []
+        debug_list = []
+        timedelta = datetime.timedelta(days=30)
+        for individual in self.individuals.values():
+            if individual.birth_date >= (GedcomTree.current_date - timedelta):
+                recent_births.append(individual.pt_row())
+                debug_list.append(GedcomTree.current_date - individual.birth_date)
+
+        recent_births_table = self.pretty_print(Individual.table_header, recent_births)
+
+        if pt:
+            print(f'Recently Born: \n{recent_births_table}')
+
+        if debug:
+            return debug_list
+
+        if write:
+            recent_header = "Recently Born:"
+            self.write_to_file.append([recent_header, recent_births_table])
+
+    def us36_list_recent_deaths(self, pt=False, debug=False, write=False):
+        """ User Story 36 - List all people in the GEDCOM file who died within the last 30 days """
+
+        recent_deaths = []
+        debug_list = []
+        timedelta = datetime.timedelta(days=30)
+        for individual in self.individuals.values():
+            if individual.death_date:
+                if individual.death_date >= (GedcomTree.current_date - timedelta):
+                    recent_deaths.append(individual.pt_row())
+                    debug_list.append(GedcomTree.current_date - individual.death_date)
+
+        recent_deaths_table = self.pretty_print(Individual.table_header, recent_deaths)
+
+        if pt:
+            print(f'Recently Deceased: \n{recent_deaths_table}')
+
+        if debug:
+            return debug_list
+
+        if write:
+            recent_header = "Recently Deceased:"
+            self.write_to_file.append([recent_header, recent_deaths_table])
+
+    def us21_correct_gender_for_role(self, pt=False, debug=False):
+        """ User stories 21 - Husband in family should be male and wife in family should be female """
+        wrong_parents = []
+
+        for family in self.families.values():
+            for individual in self.individuals.values():
+                if individual.indi_id == family.husband and individual.sex != "M":
+                    # if pt:
+                    #     print(f'ERROR: FAMILY: US021: '+family.fam_id +': Husband'+str(individual.name)+'is not a male.')
+                    self.log_error("ERROR", "FAMILY", "US21", family.line_number["HUSB"], family.fam_id, f"Husband with id {individual.indi_id} and name {individual.name} is not a male.")
+                    wrong_parents.append(individual.indi_id)
+
+                elif individual.indi_id == family.wife and individual.sex != "F":
+                    # if pt:
+                    #     print(f'ERROR: FAMILY: US021: '+family.fam_id +': Wife'+str(individual.name)+'is not a female.')
+                    self.log_error("ERROR", "FAMILY", "US21", family.line_number["WIFE"], family.fam_id, f"Wife with id {individual.indi_id} and name {individual.name} is not a female.")
+                    wrong_parents.append(individual.indi_id)
+
+        if debug:
+            return wrong_parents
+    
+    def us17_no_marriage_to_children(self, pt=False, debug=False):
+        """ User stories 17 - Parents should not marry any of their children."""
+        wrong_parent_marry = []
+
+        for family in self.families.values():
+            for children in family.children:
+                if str(family.wife) or str(family.husband) == children:
+                    # if pt:
+                        # print(f'ERROR: US17: In ' + str(family.fam_id) + 'PARENT MARRY TO CHILDREN')
+                    self.log_error("ERROR", "FAMILY", "US17", family.line_number["FAM"], family.fam_id, f"Parent is married to a child.")
+                    wrong_parent_marry.append(family.fam_id)
+        
+        if debug:
+            return wrong_parent_marry
+
+    def us27_include_individual_ages(self, pt=False, debug=False, write=False):
         """ User Story 27 - Include person's current age when listing individuals """
 
         indi_detail_list = list()
@@ -462,23 +545,46 @@ class GedcomTree:
         if pt:
             print(f'Individuals with age: \n{indi_table}')
 
-    def us06_divorce_before_death(self, pt = True, debug=False):
+        if write:
+            header = "Individuals with Ages"
+            self.write_to_file.append([header, indi_table])
+
+    def us06_divorce_before_death(self, pt=True, debug=False):
         """ User Story 27 - Divorce can only occur before death of both spouses """
 
-        divorcee_details = list()
-        table_header = ['Husband', 'H_Alive', 'Wife', 'W_Alive', 'Divorced']
+        # divorcee_details = list()
+        # table_header = ['Husband', 'H_Alive', 'Wife', 'W_Alive', 'Divorced']
+        debug_list = []
         for family in self.families.values():
             if family.divorced:
-                for individual_h in self.individuals.values():
-                    if individual_h.indi_id == family.husband and individual_h.alive == True:
-                        for individual_w in self.individuals.values():
-                            if individual_w.indi_id == family.wife and individual_w.alive == True:
-                                divorcee_details.append([individual_h.name, individual_h.alive, individual_w.name, individual_w.alive, family.divorced])
+                for individual in self.individuals.values():
+                    if individual.indi_id == family.husband:
+                        husband = individual
 
-        divorcee_table = self.pretty_print(table_header, divorcee_details)
+                    if individual.indi_id == family.wife:
+                        wife = individual
 
-        if pt:
-            print(f'Divorced couple details: \n{divorcee_table}')
+                if husband.death_date and husband.death_date < family.divorce_date:
+                    self.log_error("ERROR", "FAMILY", "US27", family.line_number["HUSB"], family.fam_id, f"Husband with id {husband.indi_id} dies {husband.death_date.strftime(GedcomTree.date_format)} before divorce on {family.divorce_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(husband.indi_id)
+
+                if wife.death_date and wife.death_date < family.divorce_date:
+                    self.log_error("ERROR", "FAMILY", "US27", family.line_number["WIFE"], family.fam_id, f"Wife with id {wife.indi_id} dies {wife.death_date.strftime(GedcomTree.date_format)} before divorce on {family.divorce_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(wife.indi_id)
+        
+        if debug:
+            return debug_list
+
+                # for individual_h in self.individuals.values():
+                #     if individual_h.indi_id == family.husband and individual_h.alive == True:
+                #         for individual_w in self.individuals.values():
+                #             if individual_w.indi_id == family.wife and individual_w.alive == True:
+                #                 divorcee_details.append([individual_h.name, individual_h.alive, individual_w.name, individual_w.alive, family.divorced])
+
+        # divorcee_table = self.pretty_print(table_header, divorcee_details)
+
+        # if pt:
+        #     print(f'Divorced couple details: \n{divorcee_table}')
 
 class Family:
     """ Family class to initialize family information """
@@ -600,7 +706,7 @@ class Individual:
 
         return [self.indi_id, self.name, self.sex, self.birth_date.strftime("%Y-%m-%d"), self.age, self.alive, self.death_date.strftime("%Y-%m-%d") if self.death_date else 'NA', self.fam_c, self.fam_s]
 
-def sprint1_main():
+def sprint1_main(write=False):
     """ Main function to run Sprint 1 User Stories """
 
     sprint1 = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=True)
@@ -643,16 +749,88 @@ def sprint1_main():
                 for errors in sprint.error_log:
                     fp.write(f'{errors}\n')
 
-def sprint2_main():
+def sprint2_main(write=False):
     """ Main function to run Sprint 2 User Stories """
 
-    sprint2 = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True)
-    sprint2.us27_include_individual_ages()
-    sprint2.us06_divorce_before_death()
+    # sprint2 = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True)
+    # sprint2.us08_birth_before_marriage_of_parents()
+    # sprint2.us09_birth_before_death_of_parents()
+    # sprint2.us35_list_recent_births(pt=True)
+    # sprint2.us36_list_recent_deaths(pt=True)
+    # sprint2.us17_no_marriage_to_children()
+    # sprint2.us21_correct_gender_for_role()
+    # sprint2.us27_include_individual_ages()
+    # sprint2.us06_divorce_before_death()
+
+    scrum = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True, write=True)
+    scrum2 = GedcomTree(r'./GEDCOM_files/U17_21_test.ged', pt=False, write=False)
+    scrum.us08_birth_before_marriage_of_parents()
+    scrum.us09_birth_before_death_of_parents()
+    scrum.us35_list_recent_births(pt=True)
+    scrum.us36_list_recent_deaths(pt=True)
+    scrum.us27_include_individual_ages(pt=True)
+    scrum.us06_divorce_before_death()
+    scrum2.us17_no_marriage_to_children()
+    scrum2.us21_correct_gender_for_role()
 
     print('Error Log:')
-    for errors in sprint2.error_log:
-        print(f'{errors}\n')
+    for errors in scrum.error_log:
+        print(f'{errors}')
+
+    for errors in scrum2.error_log:
+        print(f'{errors}')
+
+    if write:
+        try:
+            fp = open(r'./test_results/sprint2_results.txt', 'w')
+
+        except FileNotFoundError:
+            print("Can't Open!")
+        else:
+            with fp:
+                fp.write("Sprint 2 Results\n")
+                scrum = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=False, write=True)
+                scrum2 = GedcomTree(r'./GEDCOM_files/U17_21_test.ged', pt=False, write=False)
+                scrum.us08_birth_before_marriage_of_parents()
+                scrum.us09_birth_before_death_of_parents()
+                scrum.us35_list_recent_births(write=True)
+                scrum.us36_list_recent_deaths(write=True)
+                scrum.us27_include_individual_ages(write=True)
+                scrum.us06_divorce_before_death()
+                scrum2.us17_no_marriage_to_children()
+                scrum2.us21_correct_gender_for_role()
+
+                for j in scrum.write_to_file:
+                    for content in j:
+                        fp.write(f'{str(content)}\n')
+
+                for errors in scrum.error_log:
+                    fp.write(f'{errors}\n')
+
+                for errors in scrum2.error_log:
+                    fp.write(f'{errors}\n')
+
+                fp.write("\n")
+                fp.write("Sprint 1 Results\n")
+                sprint = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=False, write=True)
+                sprint.us14_multiple_births_fewer_than_6()
+                sprint.us15_fewer_than_15_siblings()
+                sprint.us33_list_orphans(write=True)
+                sprint.us38_upcoming_birthdays(write=True)
+                sprint.us30_list_living_married(write=True)
+                sprint.us31_list_living_single(write=True)
+                sprint.us22_unique_ids()
+                sprint.us16_male_lastname()
+                
+                
+                for i in sprint.write_to_file:
+                    for content in i:
+                        fp.write(f'{str(content)}\n')
+
+                for errors in sprint.error_log:
+                    fp.write(f'{errors}\n')
 
 if __name__ == "__main__":
+    
+    # sprint1_main()
     sprint2_main()
