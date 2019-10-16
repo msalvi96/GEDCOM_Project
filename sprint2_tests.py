@@ -67,5 +67,9 @@ class GedcomTreeTest(unittest.TestCase):
         self.assertIn("@I25@", debug_list)
         self.assertIn("@I26@", debug_list)
 
+    def test_us27_include_individual_ages(self):
+        """ Check if User Story 27 works properly """
+        pass
+
 if __name__ == '__main__':
     unittest.main(exit=False, verbosity=2)
