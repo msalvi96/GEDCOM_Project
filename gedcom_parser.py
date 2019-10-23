@@ -6,6 +6,7 @@ Analysing GEDCOM Data
 import os
 import datetime
 import uuid
+import collections
 from prettytable import PrettyTable
 
 class GedcomTree:
@@ -581,6 +582,39 @@ class GedcomTree:
         if debug:
             return debug_list
 
+    def us25_unique_first_names_inFamilies(self, debug=False):
+        """ User Story 25 - No more than one child with the same name and birth date should appear in a family """
+
+        debug_list = []
+        for family in self.families.values():
+            if family.children:
+                check_child = []
+                for child in family.children:
+                    for individual in self.individuals.values():
+                        if individual.indi_id == child:
+                            if (individual.full_name["firstName"], individual.birth_date) not in check_child:
+                                check_child.append((individual.full_name["firstName"], individual.birth_date))
+                            else:
+                                self.log_error("ERROR", "FAMILY", "US25", family.line_number["CHIL"][0][1], family.fam_id, f"Child with id {child} has the same name and birth date as another child in the family.")
+                                debug_list.append(family.fam_id)
+
+        if debug:
+            return debug_list
+
+    def us18_siblings_should_not_marry(self, debug=False):
+        """ User Story 18 - Siblings should not marry one another """
+
+        debug_list = []
+        for family in self.families.values():
+            if family.children:
+                for another_family in self.families.values():
+                    if another_family.husband in family.children and another_family.wife in family.children:
+                        self.log_error("ANOMALY", "FAMILY", "US18", another_family.line_number["HUSB"], another_family.fam_id, f"Siblings in family with id {family.fam_id} are married to each other in family with id {another_family.fam_id}")
+                        debug_list.append(another_family.fam_id)
+
+        if debug:
+            return debug_list
+
 class Family:
     """ Family class to initialize family information """
 
@@ -825,7 +859,18 @@ def sprint2_main(write=False):
                 for errors in sprint.error_log:
                     fp.write(f'{errors}\n')
 
+def sprint3_main(write=False):
+
+    scrum = GedcomTree(r'./GEDCOM_files/Sprint3_test_GEDCOM.ged', pt=True, write=False)
+    scrum.us25_unique_first_names_inFamilies()
+    scrum.us18_siblings_should_not_marry()
+
+    for error in scrum.error_log:
+        print(error)
+
+
 if __name__ == "__main__":
     
     # sprint1_main()
-    sprint2_main()
+    # sprint2_main()
+    sprint3_main()
