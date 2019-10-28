@@ -664,7 +664,13 @@ class GedcomTree:
                     if family.wife == individual.indi_id:
                         wife = individual
                 if not husband.death_date and not wife.death_date:
-                    if GedcomTree.current_date <= family.marriage_date <= (GedcomTree.current_date + timedelta):
+                    # Set marriage date to this year (or next year if it is currently December
+                    #   and the couple was married in January) to get the anniversary
+                    if GedcomTree.current_date.month == 12 and family.marriage_date.month == 1:
+                        anniversary = family.marriage_date.replace(year=GedcomTree.current_date.year+1)
+                    else:
+                        anniversary = family.marriage_date.replace(year=GedcomTree.current_date.year)
+                    if GedcomTree.current_date <= anniversary <= (GedcomTree.current_date + timedelta):
                         upcoming_ann_list.append([family.fam_id, family.marriage_date, family.divorce_date,
                                                   husband.name, family.husband, wife.name, family.wife, family.children])
                         debug_list.append(family.fam_id)
