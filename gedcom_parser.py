@@ -6,7 +6,9 @@ Analysing GEDCOM Data
 import os
 import datetime
 import uuid
+import collections
 from prettytable import PrettyTable
+
 
 class GedcomTree:
     """ GEDCOM Tree class to process and store data from GEDCOM files """
@@ -63,7 +65,7 @@ class GedcomTree:
                     split_line = line.split(' ', 2)
 
                     split_line = self.check_exception_tag(split_line)
-                    valid_line = self.check_valid_tag(index, split_line)
+                    self.check_valid_tag(index, split_line)
 
         self.data_processing()
 
@@ -124,8 +126,6 @@ class GedcomTree:
 
         else:
             self.invalid_tags.append((*split_line, index))
-
-        return split_line
 
     def data_processing(self):
         """ Function to process the raw data and assign individuals and families to data structure. """
@@ -581,6 +581,212 @@ class GedcomTree:
         if debug:
             return debug_list
 
+    def us25_unique_first_names_inFamilies(self, debug=False):
+        """ User Story 25 - No more than one child with the same name and birth date should appear in a family """
+
+        debug_list = []
+        for family in self.families.values():
+            if family.children:
+                check_child = []
+                for child in family.children:
+                    for individual in self.individuals.values():
+                        if individual.indi_id == child:
+                            if (individual.full_name["firstName"], individual.birth_date) not in check_child:
+                                check_child.append((individual.full_name["firstName"], individual.birth_date))
+                            else:
+                                self.log_error("ERROR", "FAMILY", "US25", family.line_number["CHIL"][0][1], family.fam_id, f"Child with id {child} has the same name and birth date as another child in the family.")
+                                debug_list.append(family.fam_id)
+
+        if debug:
+            return debug_list
+
+    def us18_siblings_should_not_marry(self, debug=False):
+        """ User Story 18 - Siblings should not marry one another """
+
+        debug_list = []
+        for family in self.families.values():
+            if family.children:
+                for another_family in self.families.values():
+                    if another_family.husband in family.children and another_family.wife in family.children:
+                        self.log_error("ANOMALY", "FAMILY", "US18", another_family.line_number["HUSB"], another_family.fam_id, f"Siblings in family with id {family.fam_id} are married to each other in family with id {another_family.fam_id}")
+                        debug_list.append(another_family.fam_id)
+
+        if debug:
+            return debug_list
+
+    def us24_unique_families_by_spouse(self, debug=False):
+        """ User Story 24 - No more than one family with the same spouses by name and the same marriage date
+            should appear in a GEDCOM file """
+
+        holding = []
+        debug_list = []
+        for family in self.families.values():
+            for individual in self.individuals.values():
+                if family.husband == individual.indi_id:
+                    husband = individual
+                if family.wife == individual.indi_id:
+                    wife = individual
+            marriage_dt = family.marriage_date
+
+            if (husband.name, wife.name, marriage_dt) in holding:
+                self.log_error("ERROR", "FAMILY", "US24", family.line_number["FAM"], family.fam_id, f"Family with id {family.fam_id} is a duplicate family record.")
+                debug_list.append(family.fam_id)
+
+            else:
+                holding.append((husband.name, wife.name, marriage_dt))
+
+        if debug:
+            return debug_list
+    
+        #     if [husband.name, wife.name, marriage_dt] in holding:
+        #         repeated_family_list.append([family.fam_id, family.marriage_date, family.divorce_date,
+        #                                           husband.name, family.husband, wife.name, family.wife, family.children])
+        #         debug_list.append(family.fam_id)
+
+
+        # repeated_family_table = self.pretty_print(Family.table_header, repeated_family_list)
+
+        # if pt:
+        #     print(f'Repeated families: \n{repeated_family_table}')
+
+        # if write:
+        #     header = "Repeated Family:"
+        #     self.write_to_file.append([header, repeated_family_table])
+
+    def us39_list_upcoming_anniversaries(self, pt=False, debug=False, write=False):
+        """ User Story 39 - List all living couples in a GEDCOM file whose marriage anniversaries
+            occur in the next 30 days """
+
+        upcoming_ann_list = []
+        debug_list = []
+        timedelta = datetime.timedelta(days=30)
+        for family in self.families.values():
+            if family.husband and family.wife and family.marriage_date and not family.divorce_date:
+                for individual in self.individuals.values():
+                    if family.husband == individual.indi_id:
+                        husband = individual
+                    if family.wife == individual.indi_id:
+                        wife = individual
+                if not husband.death_date and not wife.death_date:
+                    # Set marriage date to this year (or next year if it is currently December
+                    #   and the couple was married in January) to get the anniversary
+                    if GedcomTree.current_date.month == 12 and family.marriage_date.month == 1:
+                        anniversary = family.marriage_date.replace(year=GedcomTree.current_date.year+1)
+                    else:
+                        anniversary = family.marriage_date.replace(year=GedcomTree.current_date.year)
+                    if GedcomTree.current_date <= anniversary <= (GedcomTree.current_date + timedelta):
+                        upcoming_ann_list.append([family.fam_id, family.marriage_date, family.divorce_date,
+                                                  husband.name, family.husband, wife.name, family.wife, family.children])
+                        # debug_list.append(family.fam_id)
+                        debug_list.append(anniversary)
+
+        ann_table = self.pretty_print(Family.table_header, upcoming_ann_list)
+
+        if pt:
+            print(f'Upcoming Anniversaries: \n{ann_table}')
+
+        if debug:
+            return debug_list
+
+        if write:
+            recent_header = "Upcoming Anniversaries:"
+            self.write_to_file.append([recent_header, ann_table])
+
+    def us02_birth_before_marriage(self, debug=False):
+        """ User Story 02 - Birth Before Marriage """
+
+        debug_list = []
+        for family in self.families.values():
+            if family.marriage_date:
+                for individual in self.individuals.values():
+                    if individual.indi_id == family.husband:
+                        husband = individual
+
+                    if individual.indi_id == family.wife:
+                        wife = individual
+
+                if husband.birth_date > family.marriage_date:
+                    self.log_error("ERROR", "INDIVIDUAL", "US02", husband.line_number["INDI"], husband.indi_id, f"Husband with id {husband.indi_id} was born on {husband.birth_date.strftime(GedcomTree.date_format)} and got married on {family.marriage_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(husband.indi_id)
+                
+                if wife.birth_date > family.marriage_date:
+                    self.log_error("ERROR", "INDIVIDUAL", "US02", wife.line_number["INDI"], wife.indi_id, f"Wife with id {wife.indi_id} was born on {wife.birth_date.strftime(GedcomTree.date_format)} and got married on {family.marriage_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(wife.indi_id)
+
+        if debug:
+            return debug_list
+
+        # for individual in self.individuals.values():
+        #     if individual.fam_s is not 'NA':
+        #         indivi_list = []
+
+        #         for family in self.families.values():
+        #             if individual.birth_date < family.marriage_date:
+        #                 indivi_list.append(individual)
+        #                 break
+
+        #             elif family.marriage_date < individual.birth_date:
+        #                 self.log_error("ERROR", "INDIVIDUAL", "US02", individual.line_number["INDI"], individual.indi_id, f"Individual with id {individual.indi_id} was born on {individual.birth_date.strftime(GedcomTree.date_format)} and got married on {family.marriage_date.strftime(GedcomTree.date_format)}")
+        #                 debug_list.append(individual.indi_id)
+        #                 break
+        
+    def us03_birth_before_death(self, debug=False):
+        """ User Story 03 - Birth Before Death """
+
+        debug_list = []
+        for individual in self.individuals.values():
+            if individual.death_date:
+                if individual.birth_date > individual.death_date:
+                    # indivi_list.append(individual)
+                    self.log_error("ERROR", "INDIVIDUAL", "US03", individual.line_number["BIRT"], individual.indi_id, f"Individual with id {individual.indi_id} was born on {individual.birth_date.strftime(GedcomTree.date_format)} and died on {individual.death_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(individual.indi_id)
+        
+        if debug:
+            return debug_list
+
+                # elif individual.death_date < individual.birth_date:
+                #     self.log_error("ERROR", "INDIVIDUAL", "US03", individual.line_number["INDI"], individual.indi_id, f"Individual with id {individual.indi_id} was born on {individual.birth_date.strftime(GedcomTree.date_format)} and died on {individual.death_date.strftime(GedcomTree.date_format)}")
+                #     debug_list.append(individual.indi_id)
+                    
+    def us29_list_deceased(self, pt=False, debug=False, write=False):
+        ''' User story 29 list all the dead individuals'''
+
+        deceased_list = []
+        debug_list = []
+        for individual in self.individuals.values():
+            if individual.death_date:
+                deceased_list.append(individual.pt_row())
+                debug_list.append(individual.indi_id)
+        
+        deceased_table = self.pretty_print(Individual.table_header, deceased_list)
+
+        if pt:
+            print(f'Deceased people list: \n{deceased_table}')
+
+        if debug:
+            return debug_list
+        
+        if write:
+            deceased_header = "Deceased people list:"
+            self.write_to_file.append([deceased_header, deceased_table])
+        
+    def us10_marry_after_14(self, debug=False):
+        '''User story 10, should married after age 14'''
+
+        debug_list = []
+        for individual in self.individuals.values():
+            for family in self.families.values():    
+                if individual.indi_id == family.husband or individual.indi_id == family.wife:
+                    marry_age = family.marriage_date - individual.birth_date
+                    
+                    if (marry_age.days // 365) <= 14:
+                        self.log_error("ANOMALY", "INDIVIDUAL", "US10", family.line_number["MARR"], individual.indi_id, f"Individual id whose name is {individual.name} in family {family.fam_id} married before age 14.")
+                        debug_list.append(individual.indi_id)
+                        # print("ANOMALY", "Indiviaul", "US10", individual.name, individual.indi_id, 
+                        #             f"Individual id {individual.indi_id}  whose name is {individual.name} in family {family.fam_id} married  before age 14 !")
+        if debug:
+            return debug_list
+
 class Family:
     """ Family class to initialize family information """
 
@@ -627,6 +833,7 @@ class Family:
             divorced = True
 
         return divorced
+
 
 class Individual:
     """ Individual class to initialize individual information """
@@ -701,7 +908,8 @@ class Individual:
 
         return [self.indi_id, self.name, self.sex, self.birth_date.strftime("%Y-%m-%d"), self.age, self.alive, self.death_date.strftime("%Y-%m-%d") if self.death_date else 'NA', self.fam_c, self.fam_s]
 
-def sprint1_main(write=False):
+
+def sprint1_main(filename=None):
     """ Main function to run Sprint 1 User Stories """
 
     sprint1 = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=True)
@@ -717,17 +925,16 @@ def sprint1_main(write=False):
     for errors in sprint1.error_log:
         print(errors)
 
-    write = False
-
-    if write:
+    if filename:
         try:
-            fp = open(r'./test_results/sprint1_results.txt', 'w')
+            fp = open(filename, 'a')
 
         except FileNotFoundError:
             print("Can't Open!")
         else:
             with fp:
-                sprint = GedcomTree(r'./Sprint1_test_GEDCOM.ged', pt=False, write=True)
+                fp.write("Sprint 1 Results\n")
+                sprint = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=False, write=True)
                 sprint.us14_multiple_births_fewer_than_6()
                 sprint.us15_fewer_than_15_siblings()
                 sprint.us33_list_orphans(write=True)
@@ -741,21 +948,16 @@ def sprint1_main(write=False):
                     for content in i:
                         fp.write(f'{str(content)}\n')
 
+                fp.write("Sprint 1 Error Log\n")
+
                 for errors in sprint.error_log:
                     fp.write(f'{errors}\n')
 
-def sprint2_main(write=False):
-    """ Main function to run Sprint 2 User Stories """
+                fp.write("\n")
 
-    # sprint2 = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True)
-    # sprint2.us08_birth_before_marriage_of_parents()
-    # sprint2.us09_birth_before_death_of_parents()
-    # sprint2.us35_list_recent_births(pt=True)
-    # sprint2.us36_list_recent_deaths(pt=True)
-    # sprint2.us17_no_marriage_to_children()
-    # sprint2.us21_correct_gender_for_role()
-    # sprint2.us27_include_individual_ages()
-    # sprint2.us06_divorce_before_death()
+
+def sprint2_main(filename=None):
+    """ Main function to run Sprint 2 User Stories """
 
     scrum = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True, write=True)
     scrum2 = GedcomTree(r'./GEDCOM_files/U17_21_test.ged', pt=False, write=False)
@@ -775,9 +977,9 @@ def sprint2_main(write=False):
     for errors in scrum2.error_log:
         print(f'{errors}')
 
-    if write:
+    if filename:
         try:
-            fp = open(r'./test_results/sprint2_results.txt', 'w')
+            fp = open(filename, 'a')
 
         except FileNotFoundError:
             print("Can't Open!")
@@ -799,6 +1001,8 @@ def sprint2_main(write=False):
                     for content in j:
                         fp.write(f'{str(content)}\n')
 
+                fp.write("Sprint 2 Error Log\n")
+
                 for errors in scrum.error_log:
                     fp.write(f'{errors}\n')
 
@@ -806,26 +1010,56 @@ def sprint2_main(write=False):
                     fp.write(f'{errors}\n')
 
                 fp.write("\n")
-                fp.write("Sprint 1 Results\n")
-                sprint = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=False, write=True)
-                sprint.us14_multiple_births_fewer_than_6()
-                sprint.us15_fewer_than_15_siblings()
-                sprint.us33_list_orphans(write=True)
-                sprint.us38_upcoming_birthdays(write=True)
-                sprint.us30_list_living_married(write=True)
-                sprint.us31_list_living_single(write=True)
-                sprint.us22_unique_ids()
-                sprint.us16_male_lastname()
-                
-                
-                for i in sprint.write_to_file:
+
+def sprint3_main(filename=None):
+
+    scrum = GedcomTree(r'./GEDCOM_files/Sprint3_test_GEDCOM.ged', pt=True, write=False)
+    scrum.us25_unique_first_names_inFamilies()
+    scrum.us18_siblings_should_not_marry()
+    scrum.us02_birth_before_marriage()
+    scrum.us03_birth_before_death()
+    scrum.us29_list_deceased(pt=True)
+    scrum.us10_marry_after_14()
+    scrum.us24_unique_families_by_spouse()
+    scrum.us39_list_upcoming_anniversaries(pt=True)
+    
+    for error in scrum.error_log:
+        print(error)
+
+    if filename:
+        try:
+            fp = open(filename, 'a')
+        except FileNotFoundError:
+            print("Can't Open!")
+        else:
+            with fp:
+                fp.write("Sprint 3 Results\n")
+                scrum = GedcomTree(r'./GEDCOM_files/Sprint3_test_GEDCOM.ged', pt=False, write=True)
+                scrum.us25_unique_first_names_inFamilies()
+                scrum.us18_siblings_should_not_marry()
+                scrum.us02_birth_before_marriage()
+                scrum.us03_birth_before_death()
+                scrum.us29_list_deceased(write=True)
+                scrum.us10_marry_after_14()
+                scrum.us24_unique_families_by_spouse()
+                scrum.us39_list_upcoming_anniversaries(write=True)
+
+                for i in scrum.write_to_file:
                     for content in i:
                         fp.write(f'{str(content)}\n')
 
-                for errors in sprint.error_log:
+                fp.write("Sprint 3 Error Log\n")
+
+                for errors in scrum.error_log:
                     fp.write(f'{errors}\n')
+
+                fp.write('\n')
 
 if __name__ == "__main__":
     
+    # sprint1_main(r'./test_results/sprint3_results.txt')
+    # sprint2_main(r'./test_results/sprint3_results.txt')
+    # sprint3_main(r'./test_results/sprint3_results.txt')
     # sprint1_main()
-    sprint2_main()
+    # sprint2_main()
+    sprint3_main()
