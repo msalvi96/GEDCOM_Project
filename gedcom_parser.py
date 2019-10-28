@@ -687,6 +687,7 @@ class GedcomTree:
             recent_header = "Upcoming Anniversaries:"
             self.write_to_file.append([recent_header, ann_table])
 
+
     def us02_birth_before_marriage(self, pt=True, debug=False):
         """ User Story 02 - Birth Before Marriage """
 
@@ -722,6 +723,45 @@ class GedcomTree:
                 elif individual.death_date < individual.birth_date:
                     self.log_error("ERROR", "INDIVIDUAL", "US03", individual.line_number["INDI"], individual.indi_id, f"Individual with id {individual.indi_id} was born on {individual.birth_date.strftime(GedcomTree.date_format)} and died on {individual.death_date.strftime(GedcomTree.date_format)}")
                     debug_list.append(individual.indi_id)
+                    
+    def us29_list_deceased(self, pt=True, debug=False, write=False):
+        ''' User story 29 list all the dead individuals'''
+
+        deceased_list = []
+        debug_list = []
+        for individual in self.individuals.values():
+            if individual.death_date:
+                deceased_list.append(individual.pt_row())
+                debug_list.append(individual.indi_id)
+        
+        deceased_table = self.pretty_print(Individual.table_header, deceased_list)
+
+        if pt:
+            print(f'Deceased people list: \n{deceased_table}')
+
+        if debug:
+            return debug_list
+        
+        if write:
+            deceased_header = "Deceased people list:"
+            self.write_to_file.append([deceased_header, deceased_table])
+        
+    def us10_marry_after_14(self, debug=False):
+        '''User story 10, should married after age 14'''
+
+        debug_list = []
+        for individual in self.individuals.values():
+            for family in self.families.values():
+                
+                if individual.indi_id == family.husband or individual.indi_id == family.wife:
+                    
+                    marry_age = family.marriage_date - individual.birth_date
+                    
+                    if (marry_age.days // 365) <= 14:
+
+                        print("ANOMALY", "Indiviaul", "US10", individual.name, individual.indi_id, 
+                                    f"Individual id {individual.indi_id}  whose name is {individual.name} in family {family.fam_id} married  before age 14 !")
+                        debug_list.append(individual.indi_id)
         
         if debug:
             return debug_list
@@ -982,7 +1022,9 @@ def sprint3_main(write=False):
     scrum.us18_siblings_should_not_marry()
     scrum.us02_birth_before_marriage()
     scrum.us03_birth_before_death()
-
+    scrum.us29_list_deceased()
+    scrum.us10_marry_after_14()
+    
     for error in scrum.error_log:
         print(error)
 

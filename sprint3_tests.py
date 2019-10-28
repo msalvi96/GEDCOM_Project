@@ -39,6 +39,23 @@ class GedcomTreeTest(unittest.TestCase):
         self.assertIn('@F1@', debug_list)
         self.assertIn('@F7@', debug_list)
 
+    def test_us29_us29_list_deceased(self):
+        """ Check if User Story 29 works properly """
+
+        sprint3 = GedcomTree(r'./GEDCOM_files/Sprint3_test_GEDCOM.ged')
+        debug_list = sprint3.us29_list_deceased(debug=True)
+        self.assertEqual(len(debug_list), 6)
+        self.assertIn('@I7@', debug_list)
+        self.assertIn('@I8@', debug_list)
+
+    def test_us10_marry_after_14(self):
+        """ Check if User Story 10 works properly """
+
+        sprint3 = GedcomTree(r'./GEDCOM_files/Sprint3_test_GEDCOM.ged')
+        debug_list = sprint3.us10_marry_after_14(debug=True)
+        self.assertEqual(len(debug_list), 5)
+        self.assertIn('@I3@', debug_list)
+        self.assertIn('@I17@', debug_list)
 
 if __name__ == '__main__':
     unittest.main(exit=False, verbosity=2)
