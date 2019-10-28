@@ -54,19 +54,33 @@ This is a project for the SSW555 Agile Methods for Software Development at Steve
 |US38|Siblings should not marry|Mrunal|
 
 ---
+- **User stories for sprint 4**:
+
+|Story ID|Story Name|Owner|
+|:---:|:---:|:---:|
+|US04|Marriage before divorce|Vineet|
+|US05|Marriage before death|Vineet|
+|US19|First cousins should not marry|David|
+|US42|Reject illegitimate dates|David|
+|US23|Unique name and birth date|Weihan|
+|US04|Less than 150 years old|Weihan|
+|US11|No bigamy|Mrunal|
+|US40|Include input line numbers|Mrunal|
+
+---
 
 ## Workflow of Version control
 
-1. On the GitHub repository webpage, create your own branch with the name pattern `sprint3_initial` (e.g. `sprint3_mrunal`) based on branch `sprint2`
+1. On the GitHub repository webpage, create your own branch with the name pattern `sprint4_initial` (e.g. `sprint4_mrunal`) based on branch `sprint4`
 
-2. Go to the command line and pull down the current sprint branch with following steps, and create your own branch with the example of branch `sprint3_mrunal`:
-    1. `git clone --single-branch --branch sprint3 <SSH/HTTPS Link>`
-    2. `git checkout -b sprint3_mrunal sprint3`
+2. Go to the command line and pull down the current sprint branch with following steps, and create your own branch with the example of branch `sprint4_mrunal`:
+    1. `git clone --single-branch --branch sprint4 <SSH/HTTPS Link>`
+    2. `git checkout -b sprint4_mrunal sprint4`
     3. `git pull --all`
 
 3. Develop your user stories, test cases on your branch and push it on your own branch. I will do the merging carefully after you push the branch. Once your branch is pushed to origin but you still need to develop your user stories and test cases:
-    1. `git clone --single-branch --branch sprint3 <SSH/HTTPS Link>`
-    2. `git checkout sprint3_mrunal`
+    1. `git clone --single-branch --branch sprint4 <SSH/HTTPS Link>`
+    2. `git checkout sprint4_mrunal`
     3. `git pull --all`
 
 4. Everytime you work on your user stories and test cases make sure you pull the latest updates from the sprint branch to your own development branch: `git pull --all` should do that for you.
