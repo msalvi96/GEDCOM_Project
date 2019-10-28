@@ -65,7 +65,7 @@ class GedcomTree:
                     split_line = line.split(' ', 2)
 
                     split_line = self.check_exception_tag(split_line)
-                    valid_line = self.check_valid_tag(index, split_line)
+                    self.check_valid_tag(index, split_line)
 
         self.data_processing()
 
@@ -126,8 +126,6 @@ class GedcomTree:
 
         else:
             self.invalid_tags.append((*split_line, index))
-
-        return split_line
 
     def data_processing(self):
         """ Function to process the raw data and assign individuals and families to data structure. """
@@ -694,8 +692,7 @@ class GedcomTree:
             recent_header = "Upcoming Anniversaries:"
             self.write_to_file.append([recent_header, ann_table])
 
-
-    def us02_birth_before_marriage(self, pt=True, debug=False):
+    def us02_birth_before_marriage(self, debug=False):
         """ User Story 02 - Birth Before Marriage """
 
         debug_list = []
@@ -733,20 +730,23 @@ class GedcomTree:
         #                 debug_list.append(individual.indi_id)
         #                 break
         
-    def us03_birth_before_death(self, pt=True, debug=False):
+    def us03_birth_before_death(self, debug=False):
         """ User Story 03 - Birth Before Death """
 
         debug_list = []
         for individual in self.individuals.values():
             if individual.death_date:
-                indivi_list = []
-
-                if individual.birth_date < individual.death_date:
-                    indivi_list.append(individual)
-
-                elif individual.death_date < individual.birth_date:
-                    self.log_error("ERROR", "INDIVIDUAL", "US03", individual.line_number["INDI"], individual.indi_id, f"Individual with id {individual.indi_id} was born on {individual.birth_date.strftime(GedcomTree.date_format)} and died on {individual.death_date.strftime(GedcomTree.date_format)}")
+                if individual.birth_date > individual.death_date:
+                    # indivi_list.append(individual)
+                    self.log_error("ERROR", "INDIVIDUAL", "US03", individual.line_number["BIRT"], individual.indi_id, f"Individual with id {individual.indi_id} was born on {individual.birth_date.strftime(GedcomTree.date_format)} and died on {individual.death_date.strftime(GedcomTree.date_format)}")
                     debug_list.append(individual.indi_id)
+        
+        if debug:
+            return debug_list
+
+                # elif individual.death_date < individual.birth_date:
+                #     self.log_error("ERROR", "INDIVIDUAL", "US03", individual.line_number["INDI"], individual.indi_id, f"Individual with id {individual.indi_id} was born on {individual.birth_date.strftime(GedcomTree.date_format)} and died on {individual.death_date.strftime(GedcomTree.date_format)}")
+                #     debug_list.append(individual.indi_id)
                     
     def us29_list_deceased(self, pt=False, debug=False, write=False):
         ''' User story 29 list all the dead individuals'''
@@ -909,7 +909,7 @@ class Individual:
         return [self.indi_id, self.name, self.sex, self.birth_date.strftime("%Y-%m-%d"), self.age, self.alive, self.death_date.strftime("%Y-%m-%d") if self.death_date else 'NA', self.fam_c, self.fam_s]
 
 
-def sprint1_main(write=False):
+def sprint1_main(filename=None):
     """ Main function to run Sprint 1 User Stories """
 
     sprint1 = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=True)
@@ -925,17 +925,16 @@ def sprint1_main(write=False):
     for errors in sprint1.error_log:
         print(errors)
 
-    write = False
-
-    if write:
+    if filename:
         try:
-            fp = open(r'./test_results/sprint1_results.txt', 'w')
+            fp = open(filename, 'a')
 
         except FileNotFoundError:
             print("Can't Open!")
         else:
             with fp:
-                sprint = GedcomTree(r'./Sprint1_test_GEDCOM.ged', pt=False, write=True)
+                fp.write("Sprint 1 Results\n")
+                sprint = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=False, write=True)
                 sprint.us14_multiple_births_fewer_than_6()
                 sprint.us15_fewer_than_15_siblings()
                 sprint.us33_list_orphans(write=True)
@@ -949,22 +948,16 @@ def sprint1_main(write=False):
                     for content in i:
                         fp.write(f'{str(content)}\n')
 
+                fp.write("Sprint 1 Error Log\n")
+
                 for errors in sprint.error_log:
                     fp.write(f'{errors}\n')
 
+                fp.write("\n")
 
-def sprint2_main(write=False):
+
+def sprint2_main(filename=None):
     """ Main function to run Sprint 2 User Stories """
-
-    # sprint2 = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True)
-    # sprint2.us08_birth_before_marriage_of_parents()
-    # sprint2.us09_birth_before_death_of_parents()
-    # sprint2.us35_list_recent_births(pt=True)
-    # sprint2.us36_list_recent_deaths(pt=True)
-    # sprint2.us17_no_marriage_to_children()
-    # sprint2.us21_correct_gender_for_role()
-    # sprint2.us27_include_individual_ages()
-    # sprint2.us06_divorce_before_death()
 
     scrum = GedcomTree(r'./GEDCOM_files/Sprint2_test_GEDCOM.ged', pt=True, write=True)
     scrum2 = GedcomTree(r'./GEDCOM_files/U17_21_test.ged', pt=False, write=False)
@@ -984,9 +977,9 @@ def sprint2_main(write=False):
     for errors in scrum2.error_log:
         print(f'{errors}')
 
-    if write:
+    if filename:
         try:
-            fp = open(r'./test_results/sprint2_results.txt', 'w')
+            fp = open(filename, 'a')
 
         except FileNotFoundError:
             print("Can't Open!")
@@ -1008,6 +1001,8 @@ def sprint2_main(write=False):
                     for content in j:
                         fp.write(f'{str(content)}\n')
 
+                fp.write("Sprint 2 Error Log\n")
+
                 for errors in scrum.error_log:
                     fp.write(f'{errors}\n')
 
@@ -1015,27 +1010,8 @@ def sprint2_main(write=False):
                     fp.write(f'{errors}\n')
 
                 fp.write("\n")
-                fp.write("Sprint 1 Results\n")
-                sprint = GedcomTree(r'./GEDCOM_files/Sprint1_test_GEDCOM.ged', pt=False, write=True)
-                sprint.us14_multiple_births_fewer_than_6()
-                sprint.us15_fewer_than_15_siblings()
-                sprint.us33_list_orphans(write=True)
-                sprint.us38_upcoming_birthdays(write=True)
-                sprint.us30_list_living_married(write=True)
-                sprint.us31_list_living_single(write=True)
-                sprint.us22_unique_ids()
-                sprint.us16_male_lastname()
-                
-                
-                for i in sprint.write_to_file:
-                    for content in i:
-                        fp.write(f'{str(content)}\n')
 
-                for errors in sprint.error_log:
-                    fp.write(f'{errors}\n')
-
-
-def sprint3_main(write=False):
+def sprint3_main(filename=None):
 
     scrum = GedcomTree(r'./GEDCOM_files/Sprint3_test_GEDCOM.ged', pt=True, write=False)
     scrum.us25_unique_first_names_inFamilies()
@@ -1050,9 +1026,40 @@ def sprint3_main(write=False):
     for error in scrum.error_log:
         print(error)
 
+    if filename:
+        try:
+            fp = open(filename, 'a')
+        except FileNotFoundError:
+            print("Can't Open!")
+        else:
+            with fp:
+                fp.write("Sprint 3 Results\n")
+                scrum = GedcomTree(r'./GEDCOM_files/Sprint3_test_GEDCOM.ged', pt=False, write=True)
+                scrum.us25_unique_first_names_inFamilies()
+                scrum.us18_siblings_should_not_marry()
+                scrum.us02_birth_before_marriage()
+                scrum.us03_birth_before_death()
+                scrum.us29_list_deceased(write=True)
+                scrum.us10_marry_after_14()
+                scrum.us24_unique_families_by_spouse()
+                scrum.us39_list_upcoming_anniversaries(write=True)
+
+                for i in scrum.write_to_file:
+                    for content in i:
+                        fp.write(f'{str(content)}\n')
+
+                fp.write("Sprint 3 Error Log\n")
+
+                for errors in scrum.error_log:
+                    fp.write(f'{errors}\n')
+
+                fp.write('\n')
 
 if __name__ == "__main__":
     
+    # sprint1_main(r'./test_results/sprint3_results.txt')
+    # sprint2_main(r'./test_results/sprint3_results.txt')
+    # sprint3_main(r'./test_results/sprint3_results.txt')
     # sprint1_main()
     # sprint2_main()
     sprint3_main()
