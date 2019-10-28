@@ -9,6 +9,7 @@ import uuid
 import collections
 from prettytable import PrettyTable
 
+
 class GedcomTree:
     """ GEDCOM Tree class to process and store data from GEDCOM files """
 
@@ -615,6 +616,72 @@ class GedcomTree:
         if debug:
             return debug_list
 
+    def us24_unique_families_by_spouse(self, pt=False, debug=False, write=False):
+        """ User Story 24 - No more than one family with the same spouses by name and the same marriage date
+            should appear in a GEDCOM file """
+
+        holding = []
+        repeated_family_list = []
+        debug_list = []
+        for family in self.families.values():
+            for individual in self.individuals.values():
+                if family.husband == individual.indi_id:
+                    husband = individual
+                if family.wife == individual.indi_id:
+                    wife = individual
+            marriage_dt = family.marriage_date
+            if [husband.name, wife.name, marriage_dt] in holding:
+                repeated_family_list.append([family.fam_id, family.marriage_date, family.divorce_date,
+                                                  husband.name, family.husband, wife.name, family.wife, family.children])
+                debug_list.append(family.fam_id)
+            else:
+                holding.append([husband.name, wife.name, marriage_dt])
+
+        repeated_family_table = self.pretty_print(Family.table_header, repeated_family_list)
+
+        if pt:
+            print(f'Repeated families: \n{repeated_family_table}')
+
+        if debug:
+            return debug_list
+
+        if write:
+            header = "Repeated Family:"
+            self.write_to_file.append([header, repeated_family_table])
+
+    def us39_list_upcoming_anniversaries(self, pt=False, debug=False, write=False):
+        """ User Story 39 - List all living couples in a GEDCOM file whose marriage anniversaries
+            occur in the next 30 days """
+
+        upcoming_ann_list = []
+        debug_list = []
+        timedelta = datetime.timedelta(days=30)
+        for family in self.families.values():
+            if family.husband and family.wife and family.marriage_date and not family.divorce_date:
+                for individual in self.individuals.values():
+                    if family.husband == individual.indi_id:
+                        husband = individual
+                    if family.wife == individual.indi_id:
+                        wife = individual
+                if not husband.death_date and not wife.death_date:
+                    if GedcomTree.current_date <= family.marriage_date <= (GedcomTree.current_date + timedelta):
+                        upcoming_ann_list.append([family.fam_id, family.marriage_date, family.divorce_date,
+                                                  husband.name, family.husband, wife.name, family.wife, family.children])
+                        debug_list.append(family.fam_id)
+
+        ann_table = self.pretty_print(Family.table_header, upcoming_ann_list)
+
+        if pt:
+            print(f'Upcoming Anniversaries: \n{ann_table}')
+
+        if debug:
+            return debug_list
+
+        if write:
+            recent_header = "Upcoming Anniversaries:"
+            self.write_to_file.append([recent_header, ann_table])
+
+
 class Family:
     """ Family class to initialize family information """
 
@@ -661,6 +728,7 @@ class Family:
             divorced = True
 
         return divorced
+
 
 class Individual:
     """ Individual class to initialize individual information """
@@ -735,6 +803,7 @@ class Individual:
 
         return [self.indi_id, self.name, self.sex, self.birth_date.strftime("%Y-%m-%d"), self.age, self.alive, self.death_date.strftime("%Y-%m-%d") if self.death_date else 'NA', self.fam_c, self.fam_s]
 
+
 def sprint1_main(write=False):
     """ Main function to run Sprint 1 User Stories """
 
@@ -777,6 +846,7 @@ def sprint1_main(write=False):
 
                 for errors in sprint.error_log:
                     fp.write(f'{errors}\n')
+
 
 def sprint2_main(write=False):
     """ Main function to run Sprint 2 User Stories """
@@ -858,6 +928,7 @@ def sprint2_main(write=False):
 
                 for errors in sprint.error_log:
                     fp.write(f'{errors}\n')
+
 
 def sprint3_main(write=False):
 
