@@ -787,6 +787,100 @@ class GedcomTree:
         if debug:
             return debug_list
 
+    def us04_marriage_after_divorce(self, debug=False):
+        """ User Story 04:  Marriage should occur before divorce of spouses and divorce can only occur after marriage """
+        pass
+
+    def us05_marriage_before_death(self, debug=False):
+        """ User Story 05: Marriage should occur before death of either spouse """
+        pass
+
+    def us19_first_cousins_should_not_marry(self, debug=False):
+        """ User Story 19: First cousins should not marry one another """
+        pass
+
+    def us42_reject_illegitimate_dates(self, debug=False):
+        """ User Story 42: All dates should be legitimate dates for the months specified """
+        pass
+
+    def us23_unique_name_and_birth_date(self, debug=False):
+        """ User Story 23: No more than one individual with the same name and birth date """
+        pass
+
+    def us07_less_than_150_years_old(self, debug=False):
+        """ User Story 07: Individuals should be less than 150 years old alive or dead """
+        pass
+
+    def us11_no_bigamy(self, debug=False):
+        """ User Story 11: Marriage should not occur during marriage to another spouse """
+
+        debug_list = []
+        for individual in self.individuals.values():
+            check_list = []
+            for family in self.families.values():
+                if family.husband == individual.indi_id:
+                    if family.divorce_date:
+                        break
+                    
+                    elif family.husband in check_list:
+                        self.log_error("ANOMALY", "INDIVIDUAL", "US11", family.line_number["HUSB"], individual.indi_id, f"Husband with id {individual.indi_id} is doing bigamy in family {family.fam_id}")
+                        debug_list.append(individual.indi_id)
+
+                    else:
+                        check_list.append(family.husband)
+
+                if family.wife == individual.indi_id:
+                    if family.divorce_date:
+                        break
+                    
+                    elif family.wife in check_list:
+                        self.log_error("ANOMALY", "INDIVIDUAL", "US11", family.line_number["WIFE"], individual.indi_id, f"Wife with id {individual.indi_id} is doing bigamy in family {family.fam_id}")
+                        debug_list.append(individual.indi_id)
+
+                    else:
+                        check_list.append(family.wife)
+
+        if debug:
+            return debug_list
+
+    def us40_include_input_line_numbers(self, pt=False, debug=False, write=False):
+        """ User Story 40: List line numbers from GEDCOM source file when reporting errors """
+        
+        indi_list = []
+        fam_list = []
+        debug_list = []
+        indi_table_header = ["ID", "Name", "Source Lines"]
+        fam_table_header = ["ID", "Husband", "Wife", "Source Lines"]
+        for individual in self.individuals.values():
+            indi_list.append([individual.indi_id, individual.name, individual.line_number])
+
+            for line_numbers in individual.line_number.values():
+                debug_list.append(line_numbers)
+
+        for family in self.families.values():
+            fam_list.append([family.fam_id, family.husband, family.wife, family.line_number])
+
+            for keys, line_numbers in family.line_number.items():
+                if keys == "CHIL":
+                    for tuples in family.line_number[keys]:
+                        debug_list.append(tuples[1])
+
+                else:
+                    debug_list.append(line_numbers)
+
+        indi_table = self.pretty_print(indi_table_header, indi_list)
+        fam_table = self.pretty_print(fam_table_header, fam_list)
+
+        if pt:
+            print(f'Include Input Line Numbers: \n{indi_table}\n{fam_table}')
+
+        if debug:
+            return debug_list
+
+        if write:
+            source_lines_header = "Include Input Source Line Numbers:"
+            self.write_to_file.append([source_lines_header, "Individuals", indi_table, "Families", fam_table])
+
 class Family:
     """ Family class to initialize family information """
 
@@ -1055,6 +1149,50 @@ def sprint3_main(filename=None):
 
                 fp.write('\n')
 
+def sprint4_main(filename=None):
+
+    scrum = GedcomTree(r'./GEDCOM_files/Sprint4_test_GEDCOM.ged', pt=True, write=False)
+    scrum.us04_marriage_after_divorce()
+    scrum.us05_marriage_before_death()
+    scrum.us19_first_cousins_should_not_marry()
+    scrum.us42_reject_illegitimate_dates()
+    scrum.us23_unique_name_and_birth_date()
+    scrum.us07_less_than_150_years_old()
+    scrum.us11_no_bigamy()
+    scrum.us40_include_input_line_numbers(pt=True)
+    
+    for error in scrum.error_log:
+        print(error)
+
+    if filename:
+        try:
+            fp = open(filename, 'a')
+        except FileNotFoundError:
+            print("Can't Open!")
+        else:
+            with fp:
+                fp.write("Sprint 4 Results\n")
+                scrum = GedcomTree(r'./GEDCOM_files/Sprint4_test_GEDCOM.ged', pt=False, write=True)
+                scrum.us04_marriage_after_divorce()
+                scrum.us05_marriage_before_death()
+                scrum.us19_first_cousins_should_not_marry()
+                scrum.us42_reject_illegitimate_dates()
+                scrum.us23_unique_name_and_birth_date()
+                scrum.us07_less_than_150_years_old()
+                scrum.us11_no_bigamy()
+                scrum.us40_include_input_line_numbers(write=True)
+
+                for i in scrum.write_to_file:
+                    for content in i:
+                        fp.write(f'{str(content)}\n')
+
+                fp.write("Sprint 4 Error Log\n")
+
+                for errors in scrum.error_log:
+                    fp.write(f'{errors}\n')
+
+                fp.write('\n')
+
 if __name__ == "__main__":
     
     # sprint1_main(r'./test_results/sprint3_results.txt')
@@ -1062,4 +1200,5 @@ if __name__ == "__main__":
     # sprint3_main(r'./test_results/sprint3_results.txt')
     # sprint1_main()
     # sprint2_main()
-    sprint3_main()
+    # sprint3_main()
+    sprint4_main()

@@ -9,3 +9,4 @@ script:
   - python sprint1_tests.py
   - python sprint2_tests.py
   - python sprint3_tests.py
+  - python sprint4_tests.py
