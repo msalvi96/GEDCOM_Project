@@ -14,11 +14,25 @@ class GedcomTreeTest(unittest.TestCase):
 
     def test_us19_first_cousins_should_not_marry(self):
         """ Check if User Story 19 works properly """
-        pass
+
+        sprint4 = GedcomTree(r'./GEDCOM_files/Sprint4_test_GEDCOM.ged', pt=False, write=False)
+        debug_list = sprint4.us19_first_cousins_should_not_marry(debug=True)
+        self.assertEqual(len(debug_list), 2)
+        self.assertIn("@F15@", debug_list)
+        self.assertIn("@F16@", debug_list)
 
     def test_us42_reject_illegitimate_dates(self):
         """ Check if User Story 42 works properly """
-        pass
+
+        sprint4 = GedcomTree(r'./GEDCOM_files/Sprint4_test_GEDCOM.ged', pt=False, write=False)
+        debug_list = sprint4.us42_reject_illegitimate_dates(debug=True)
+        self.assertEqual(len(debug_list), 6)
+        self.assertIn("@I31@", debug_list)
+        self.assertIn("@I32@", debug_list)
+        self.assertIn("@F13@", debug_list)
+        self.assertIn("@F15@", debug_list)
+        self.assertIn("@F16@", debug_list)
+
 
     def test_us23_unique_name_and_birth_date(self):
         """ Check if User Story 23 works properly """
@@ -33,12 +47,13 @@ class GedcomTreeTest(unittest.TestCase):
 
         sprint4 = GedcomTree(r'./GEDCOM_files/Sprint4_test_GEDCOM.ged', pt=False, write=False)
         debug_list = sprint4.us11_no_bigamy(debug=True)
-        self.assertEqual(len(debug_list), 2)
+        self.assertEqual(len(debug_list), 4)
         self.assertIn("@I6@", debug_list)
+        self.assertIn("@I13@", debug_list)
         self.assertIn("@I19@", debug_list)
 
     def test_us40_include_input_line_numbers(self):
-        """ Check if User Story 3 works properly """
+        """ Check if User Story 40 works properly """
 
         sprint4 = GedcomTree(r'./GEDCOM_files/Sprint4_test_GEDCOM.ged', pt=False, write=False)
         debug_list = sprint4.us40_include_input_line_numbers(debug=True)
