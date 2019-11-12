@@ -45,14 +45,21 @@ class GedcomTreeTest(unittest.TestCase):
         self.assertIn("@F15@", debug_list)
         self.assertIn("@F16@", debug_list)
 
-
     def test_us23_unique_name_and_birth_date(self):
         """ Check if User Story 23 works properly """
-        pass
 
+        sprint4 = GedcomTree(r'./GEDCOM_files/Sprint4_test_GEDCOM.ged', pt=False, write=False)
+        bug_number = sprint4.us23_unique_name_and_birth_date(debug=True)
+        self.assertEqual(bug_number, 1)
+        
     def test_us07_less_than_150_years_old(self):
         """ Check if User Story 07 works properly """
-        pass
+
+        sprint4 = GedcomTree(r'./GEDCOM_files/Sprint4_test_GEDCOM.ged', pt=False, write=False)
+        debug_list = sprint4.us07_less_than_150_years_old(debug=True)
+        self.assertEqual(len(debug_list), 1)
+        self.assertIn("@I7@", debug_list)
+        
 
     def test_us11_no_bigamy(self):
         """ Check if User Story 11 works properly """

@@ -913,13 +913,23 @@ class GedcomTree:
         if debug:
             return debug_list
 
-    def us23_unique_name_and_birth_date(self, debug=False):
-        """ User Story 23: No more than one individual with the same name and birth date """
-        pass
 
     def us07_less_than_150_years_old(self, debug=False):
         """ User Story 07: Individuals should be less than 150 years old alive or dead """
-        pass
+        
+        debug_list = []
+        for individual in self.individuals.values():
+            age = GedcomTree.current_date - individual.birth_date if not individual.death_date else individual.death_date - individual.birth_date
+
+            if (age.days // 365) >= 150:
+                self.log_error("ANOMALY", "INDIVIDUAL", "US07", individual.name, individual.indi_id, f" is {age.days // 365} years old which is bigger than 150 !")
+                debug_list.append(individual.indi_id)
+        
+        if debug:
+            return debug_list
+
+
+             
 
     def us11_no_bigamy(self, debug=False):
         """ User Story 11: Marriage should not occur during marriage to another spouse """
@@ -990,6 +1000,20 @@ class GedcomTree:
         if write:
             source_lines_header = "Include Input Source Line Numbers:"
             self.write_to_file.append([source_lines_header, "Individuals", indi_table, "Families", fam_table])
+
+    def us23_unique_name_and_birth_date(self, debug=False):
+        '''No more than one family with the same spouses by name and the same marriage date should appear in a GEDCOM file '''
+
+        check_list = []
+        bug_number = 0
+        for individual in self.individuals.values():
+            if (individual.name, individual.birth_date) not in check_list:
+                check_list.append((individual.name, individual.birth_date))
+            else:
+                self.log_error("ANOMALY", "INDIVIDUAL", "US23", individual.name, individual.birth_date, f"these name and birthdate have been multiple used !")
+                bug_number += 1
+        if debug:
+            return bug_number
 
 
 class Family:
