@@ -796,11 +796,51 @@ class GedcomTree:
     def us04_marriage_after_divorce(self, debug=False):
         """ User Story 04:  Marriage should occur before divorce of spouses
             and divorce can only occur after marriage """
-        pass
+
+        debug_list = []
+        for family in self.families.values():
+            if family.divorced:
+                for individual in self.individuals.values():
+                    if individual.indi_id == family.husband:
+                        husband = individual
+
+                    if individual.indi_id == family.wife:
+                        wife = individual
+
+                if family.divorce_date < family.marriage_date:
+                    self.log_error("ERROR", "FAMILY", "US04", family.line_number["HUSB"], family.fam_id, f"Husband with id {husband.indi_id} got divorced on {family.divorce_date.strftime(GedcomTree.date_format)} before his marriage on {family.marriage_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(husband.indi_id)
+
+                if family.divorce_date < family.marriage_date:
+                    self.log_error("ERROR", "FAMILY", "US04", family.line_number["WIFE"], family.fam_id, f"Wife with id {wife.indi_id} got divorced on {family.divorce_date.strftime(GedcomTree.date_format)} before her marriage on {family.marriage_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(wife.indi_id)
+
+        if debug:
+            return debug_list
 
     def us05_marriage_before_death(self, debug=False):
         """ User Story 05: Marriage should occur before death of either spouse """
-        pass
+
+        debug_list = []
+        for family in self.families.values():
+            if family.marriage_date:
+                for individual in self.individuals.values():
+                    if individual.indi_id == family.husband:
+                        husband = individual
+
+                    if individual.indi_id == family.wife:
+                        wife = individual
+
+                if husband.death_date and husband.death_date < family.marriage_date:
+                    self.log_error("ERROR", "FAMILY", "US05", family.line_number["HUSB"], family.fam_id, f"Husband with id {husband.indi_id} died on {husband.death_date.strftime(GedcomTree.date_format)} before his marriage on {family.marriage_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(husband.indi_id)
+
+                if wife.death_date and wife.death_date < family.marriage_date:
+                    self.log_error("ERROR", "FAMILY", "US05", family.line_number["WIFE"], family.fam_id, f"Wife with id {wife.indi_id} died on {wife.death_date.strftime(GedcomTree.date_format)} before her marriage on {family.marriage_date.strftime(GedcomTree.date_format)}")
+                    debug_list.append(wife.indi_id)
+
+        if debug:
+            return debug_list
 
     def us19_first_cousins_should_not_marry(self, pt=False, debug=False, write=False):
         """ User Story 19: First cousins should not marry one another """
