@@ -279,7 +279,7 @@ class GedcomTree:
             return orphan_list
 
         if write:
-            orphan_header = "Summary of Orphans:"
+            orphan_header = "US33: Summary of Orphans:"
             self.write_to_file.append([orphan_header, orphan_table])
 
     def us38_upcoming_birthdays(self, pt=False, debug=False, write=False):
@@ -303,7 +303,7 @@ class GedcomTree:
             return debug_list
 
         if write:
-            birthday_header = "Upcoming Birthdays:"
+            birthday_header = "US38: Upcoming Birthdays:"
             self.write_to_file.append([birthday_header, birthday_table])
 
     def us30_list_living_married(self, pt=False, debug=False, write=False):
@@ -324,7 +324,7 @@ class GedcomTree:
             return living_married_list
 
         if write:
-            living_header = "Living Married:"
+            living_header = "US30: Living Married:"
             self.write_to_file.append([living_header, living_married_table])
 
     def us31_list_living_single(self, pt=False, debug=False, write=False):
@@ -345,7 +345,7 @@ class GedcomTree:
             return living_single_list
 
         if write:
-            single_header = "Living Single:"
+            single_header = "US31: Living Single:"
             self.write_to_file.append([single_header, living_single_table])
 
     def us22_unique_ids(self, debug=False):
@@ -475,7 +475,7 @@ class GedcomTree:
             return debug_list
 
         if write:
-            recent_header = "Recently Born:"
+            recent_header = "US35: Recently Born:"
             self.write_to_file.append([recent_header, recent_births_table])
 
     def us36_list_recent_deaths(self, pt=False, debug=False, write=False):
@@ -499,7 +499,7 @@ class GedcomTree:
             return debug_list
 
         if write:
-            recent_header = "Recently Deceased:"
+            recent_header = "US36: Recently Deceased:"
             self.write_to_file.append([recent_header, recent_deaths_table])
 
     def us21_correct_gender_for_role(self, pt=False, debug=False):
@@ -560,7 +560,7 @@ class GedcomTree:
             return debug_list
 
         if write:
-            header = "Individuals with Ages"
+            header = "US27: Individuals with Ages"
             self.write_to_file.append([header, indi_table])
 
     def us06_divorce_before_death(self, pt=True, debug=False):
@@ -695,7 +695,7 @@ class GedcomTree:
             return debug_list
 
         if write:
-            recent_header = "Upcoming Anniversaries:"
+            recent_header = "US39: Upcoming Anniversaries:"
             self.write_to_file.append([recent_header, ann_table])
 
     def us02_birth_before_marriage(self, debug=False):
@@ -773,7 +773,7 @@ class GedcomTree:
             return debug_list
         
         if write:
-            deceased_header = "Deceased people list:"
+            deceased_header = "US29: Deceased people list:"
             self.write_to_file.append([deceased_header, deceased_table])
         
     def us10_marry_after_14(self, debug=False):
@@ -842,11 +842,11 @@ class GedcomTree:
         if debug:
             return debug_list
 
-    def us19_first_cousins_should_not_marry(self, pt=False, debug=False, write=False):
+    def us19_first_cousins_should_not_marry(self, debug=False):
         """ User Story 19: First cousins should not marry one another """
 
         debug_list = []
-        married_cousins = []
+        # married_cousins = []
         for f1 in self.families.values():
             parents = f1.children
             children = []
@@ -864,19 +864,22 @@ class GedcomTree:
                     if ((f3.husband in children) and (f3.wife in cousins)) or ((f3.husband in cousins) and (f3.wife in children)) and f3.fam_id not in debug_list:
                         self.log_error("ANOMALY", "FAMILY", "US19", f2.line_number["FAM"], f2.fam_id,
                                         f"Husband with id {f2.husband} and wife with id {f2.wife} are first cousins.")
-                        married_cousins.append([f3.fam_id, f3.marriage_date, f3.divorce_date,
-                                                f3.husband, f3.husband, f3.wife, f3.wife, f3.children])
+                        # married_cousins.append([f3.fam_id, f3.marriage_date, f3.divorce_date,
+                        #                         f3.husband, f3.husband, f3.wife, f3.wife, f3.children])
                         debug_list.append(f3.fam_id)
                 children = []
                 cousins = []
 
-        married_cousins_table = self.pretty_print(Family.table_header, married_cousins)
+        # married_cousins_table = self.pretty_print(Family.table_header, married_cousins)
 
-        if pt:
-            print(f'Summary of married cousins: \n{married_cousins_table}')
+        # if pt:
+        #     print(f'Summary of married cousins: \n{married_cousins_table}')
 
         if debug:
             return debug_list
+
+        # if write:
+
 
     def us42_reject_illegitimate_dates(self, debug=False):
         """ User Story 42: All dates should be legitimate dates for the months specified """
@@ -998,7 +1001,7 @@ class GedcomTree:
             return debug_list
 
         if write:
-            source_lines_header = "Include Input Source Line Numbers:"
+            source_lines_header = "US40: Include Input Source Line Numbers:"
             self.write_to_file.append([source_lines_header, "Individuals", indi_table, "Families", fam_table])
 
     def us23_unique_name_and_birth_date(self, debug=False):
@@ -1330,10 +1333,12 @@ def sprint4_main(filename=None):
 
 if __name__ == "__main__":
     
-    # sprint1_main(r'./test_results/sprint3_results.txt')
-    # sprint2_main(r'./test_results/sprint3_results.txt')
-    # sprint3_main(r'./test_results/sprint3_results.txt')
+    sprint1_main(r'./test_results/sprint4_results.txt')
+    sprint2_main(r'./test_results/sprint4_results.txt')
+    sprint3_main(r'./test_results/sprint4_results.txt')
+    sprint4_main(r'./test_results/sprint4_results.txt')
     # sprint1_main()
     # sprint2_main()
     # sprint3_main()
-    sprint4_main()
+    # sprint4_main()
+    
