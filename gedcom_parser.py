@@ -878,9 +878,6 @@ class GedcomTree:
         if debug:
             return debug_list
 
-        # if write:
-
-
     def us42_reject_illegitimate_dates(self, debug=False):
         """ User Story 42: All dates should be legitimate dates for the months specified """
 
@@ -916,7 +913,6 @@ class GedcomTree:
         if debug:
             return debug_list
 
-
     def us07_less_than_150_years_old(self, debug=False):
         """ User Story 07: Individuals should be less than 150 years old alive or dead """
         
@@ -930,9 +926,6 @@ class GedcomTree:
         
         if debug:
             return debug_list
-
-
-             
 
     def us11_no_bigamy(self, debug=False):
         """ User Story 11: Marriage should not occur during marriage to another spouse """
@@ -1017,7 +1010,6 @@ class GedcomTree:
                 bug_number += 1
         if debug:
             return bug_number
-
 
 class Family:
     """ Family class to initialize family information """
@@ -1187,7 +1179,6 @@ def sprint1_main(filename=None):
 
                 fp.write("\n")
 
-
 def sprint2_main(filename=None):
     """ Main function to run Sprint 2 User Stories """
 
@@ -1333,12 +1324,11 @@ def sprint4_main(filename=None):
 
 if __name__ == "__main__":
     
-    sprint1_main(r'./test_results/sprint4_results.txt')
-    sprint2_main(r'./test_results/sprint4_results.txt')
-    sprint3_main(r'./test_results/sprint4_results.txt')
-    sprint4_main(r'./test_results/sprint4_results.txt')
+    # sprint1_main(r'./test_results/sprint4_results.txt')
+    # sprint2_main(r'./test_results/sprint4_results.txt')
+    # sprint3_main(r'./test_results/sprint4_results.txt')
+    # sprint4_main(r'./test_results/sprint4_results.txt')
     # sprint1_main()
     # sprint2_main()
     # sprint3_main()
-    # sprint4_main()
-    
+    sprint4_main()

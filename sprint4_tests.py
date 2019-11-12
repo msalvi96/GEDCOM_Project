@@ -60,7 +60,6 @@ class GedcomTreeTest(unittest.TestCase):
         self.assertEqual(len(debug_list), 1)
         self.assertIn("@I7@", debug_list)
         
-
     def test_us11_no_bigamy(self):
         """ Check if User Story 11 works properly """
 
